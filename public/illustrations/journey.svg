@@ -1,0 +1,109 @@
+<svg viewBox="0 0 1200 220" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto">
+  <!-- Dotted Connecting Lines -->
+  <line x1="160" y1="100" x2="280" y2="100" stroke="#B8904A" stroke-width="1.5" stroke-dasharray="6 6" />
+  <line x1="360" y1="100" x2="480" y2="100" stroke="#B8904A" stroke-width="1.5" stroke-dasharray="6 6" />
+  <line x1="560" y1="100" x2="680" y2="100" stroke="#B8904A" stroke-width="1.5" stroke-dasharray="6 6" />
+  <line x1="760" y1="100" x2="880" y2="100" stroke="#B8904A" stroke-width="1.5" stroke-dasharray="6 6" />
+  <line x1="960" y1="100" x2="1080" y2="100" stroke="#B8904A" stroke-width="1.5" stroke-dasharray="6 6" />
+
+  <!-- Direction Arrows -->
+  <path d="M 224 96 L 228 100 L 224 104" stroke="#B8904A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 424 96 L 428 100 L 424 104" stroke="#B8904A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 624 96 L 628 100 L 624 104" stroke="#B8904A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 824 96 L 828 100 L 824 104" stroke="#B8904A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 1024 96 L 1028 100 L 1024 104" stroke="#B8904A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- Step 01: Cotton Harvest -->
+  <g id="step-01" transform="translate(60, 40)">
+    <circle cx="60" cy="60" r="55" stroke="#E5D8C9" stroke-width="1" fill="#FFFDF9" />
+    <!-- Cotton Flower Icon -->
+    <path d="M60 40 C52 40 48 48 48 55 C48 60 50 63 54 65 C50 67 48 72 48 77 C48 84 54 90 60 90 C66 90 72 84 72 77 C72 72 70 67 66 65 C70 63 72 60 72 55 C72 48 68 40 60 40 Z" stroke="#3B2B24" stroke-width="1.5" stroke-linejoin="round" fill="none" />
+    <path d="M60 90 C60 95 62 100 64 102" stroke="#23352D" stroke-width="1.5" stroke-linecap="round" />
+    <path d="M60 75 C60 75 58 78 54 78" stroke="#3B2B24" stroke-width="1" />
+    <path d="M60 75 C60 75 62 78 66 78" stroke="#3B2B24" stroke-width="1" />
+    <path d="M60 55 C60 55 58 52 54 52" stroke="#3B2B24" stroke-width="1" />
+    <path d="M60 55 C60 55 62 52 66 52" stroke="#3B2B24" stroke-width="1" />
+  </g>
+
+  <!-- Step 02: Thread Making -->
+  <g id="step-02" transform="translate(260, 40)">
+    <circle cx="60" cy="60" r="55" stroke="#E5D8C9" stroke-width="1" fill="#FFFDF9" />
+    <!-- Spinning Wheel (Charkha) Icon -->
+    <circle cx="50" cy="62" r="28" stroke="#3B2B24" stroke-width="1.5" />
+    <circle cx="50" cy="62" r="3" fill="#3B2B24" />
+    <!-- Spokes -->
+    <line x1="50" y1="34" x2="50" y2="90" stroke="#3B2B24" stroke-width="1" />
+    <line x1="22" y1="62" x2="78" y2="62" stroke="#3B2B24" stroke-width="1" />
+    <line x1="30" y1="42" x2="70" y2="82" stroke="#3B2B24" stroke-width="1" />
+    <line x1="30" y1="82" x2="70" y2="42" stroke="#3B2B24" stroke-width="1" />
+    <!-- Spindle & Frame -->
+    <line x1="88" y1="50" x2="88" y2="82" stroke="#3B2B24" stroke-width="1.5" stroke-linecap="round" />
+    <line x1="82" y1="78" x2="94" y2="78" stroke="#3B2B24" stroke-width="1.5" />
+    <!-- Thread Line -->
+    <path d="M72 75 C78 78 84 76 88 66" stroke="#B8904A" stroke-width="1" />
+    <line x1="38" y1="88" x2="88" y2="82" stroke="#3B2B24" stroke-width="1.5" />
+  </g>
+
+  <!-- Step 03: Natural Dye -->
+  <g id="step-03" transform="translate(460, 40)">
+    <circle cx="60" cy="60" r="55" stroke="#E5D8C9" stroke-width="1" fill="#FFFDF9" />
+    <!-- Clay Pots & Liquid Icon -->
+    <path d="M40 85 C35 85 30 80 30 72 C30 65 38 60 40 60 C42 60 50 65 50 72 C50 80 45 85 40 85 Z" stroke="#3B2B24" stroke-width="1.5" fill="none" />
+    <path d="M36 60 H44" stroke="#3B2B24" stroke-width="1.5" stroke-linecap="round" />
+    
+    <path d="M72 82 C65 82 58 76 58 68 C58 60 68 52 72 52 C76 52 86 60 86 68 C86 76 79 82 72 82 Z" stroke="#3B2B24" stroke-width="1.5" fill="none" />
+    <path d="M67 52 H77" stroke="#3B2B24" stroke-width="1.5" stroke-linecap="round" />
+    <!-- Dripping Dye -->
+    <path d="M72 40 V52" stroke="#B8904A" stroke-width="1.5" stroke-dasharray="2 2" />
+    <circle cx="72" cy="40" r="2" fill="#B8904A" />
+    <path d="M52 65 C58 55 70 58 72 52" stroke="#B8904A" stroke-width="1.5" />
+  </g>
+
+  <!-- Step 04: Fabric Weaving -->
+  <g id="step-04" transform="translate(660, 40)">
+    <circle cx="60" cy="60" r="55" stroke="#E5D8C9" stroke-width="1" fill="#FFFDF9" />
+    <!-- Loom Icon -->
+    <rect x="35" y="42" width="50" height="38" rx="2" stroke="#3B2B24" stroke-width="1.5" />
+    <!-- Vertical Warp Threads -->
+    <line x1="42" y1="42" x2="42" y2="80" stroke="#E5D8C9" stroke-width="1" />
+    <line x1="48" y1="42" x2="48" y2="80" stroke="#E5D8C9" stroke-width="1" />
+    <line x1="54" y1="42" x2="54" y2="80" stroke="#E5D8C9" stroke-width="1" />
+    <line x1="60" y1="42" x2="60" y2="80" stroke="#E5D8C9" stroke-width="1" />
+    <line x1="66" y1="42" x2="66" y2="80" stroke="#E5D8C9" stroke-width="1" />
+    <line x1="72" y1="42" x2="72" y2="80" stroke="#E5D8C9" stroke-width="1" />
+    <line x1="78" y1="42" x2="78" y2="80" stroke="#E5D8C9" stroke-width="1" />
+    <!-- Horizontal Weft Thread -->
+    <path d="M30 60 H90" stroke="#B8904A" stroke-width="1.5" stroke-linecap="round" />
+    <!-- Shuttle -->
+    <path d="M84 57 L92 60 L84 63 Z" fill="#3B2B24" />
+  </g>
+
+  <!-- Step 05: Design & Craft -->
+  <g id="step-05" transform="translate(860, 40)">
+    <circle cx="60" cy="60" r="55" stroke="#E5D8C9" stroke-width="1" fill="#FFFDF9" />
+    <!-- Dress Mannequin Icon -->
+    <path d="M60 35 V42" stroke="#3B2B24" stroke-width="1.5" />
+    <!-- Mannequin Torso -->
+    <path d="M50 42 C54 42 66 42 70 42 C72 50 72 55 68 70 C64 85 66 90 60 90 C54 90 56 85 52 70 C48 55 48 50 50 42 Z" stroke="#3B2B24" stroke-width="1.5" fill="none" stroke-linejoin="round" />
+    <!-- Stand -->
+    <line x1="60" y1="90" x2="60" y2="105" stroke="#3B2B24" stroke-width="1.5" />
+    <path d="M50 105 H70" stroke="#3B2B24" stroke-width="1.5" stroke-linecap="round" />
+    <!-- Fabric Drape on Mannequin -->
+    <path d="M51 52 C56 58 64 62 67 75" stroke="#B8904A" stroke-width="1.5" fill="none" />
+  </g>
+
+  <!-- Step 06: Made For You -->
+  <g id="step-06" transform="translate(1060, 40)">
+    <circle cx="60" cy="60" r="55" stroke="#E5D8C9" stroke-width="1" fill="#FFFDF9" />
+    <!-- Finished Outfit / Elegance Icon -->
+    <!-- Hanger -->
+    <path d="M54 42 C56 38 64 38 66 42 L78 48 H42 L54 42 Z" stroke="#3B2B24" stroke-width="1" fill="none" />
+    <!-- Elegant Anarkali Dress Outline -->
+    <path d="M46 48 L48 62 C50 62 50 64 42 76 L32 102 H88 L78 76 C70 64 70 62 72 62 L74 48 H46 Z" stroke="#3B2B24" stroke-width="1.5" fill="none" stroke-linejoin="round" />
+    <!-- Zari Details -->
+    <path d="M50 56 H70" stroke="#B8904A" stroke-width="1" />
+    <path d="M48 62 H72" stroke="#B8904A" stroke-width="1" />
+    <path d="M40 82 H80" stroke="#B8904A" stroke-width="1" />
+    <path d="M35 96 H85" stroke="#B8904A" stroke-width="1.2" />
+  </g>
+</svg>
