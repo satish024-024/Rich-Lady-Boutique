@@ -3,11 +3,13 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Heart, ShoppingBag, MessageCircle, ArrowLeft, Share2, ZoomIn, Move, Maximize2, Download, FileText, Sparkles, CheckCircle } from "lucide-react";
+import { Heart, ShoppingBag, MessageCircle, ArrowLeft, Share2, ZoomIn, Move, Maximize2, Download, FileText, Sparkles, CheckCircle, HelpCircle, CreditCard, X } from "lucide-react";
 import { getLocalProducts } from "@/utils/db";
 import { Product } from "@/types/product";
 import { FadeIn } from "@/components/motion/FadeIn";
 import { toast } from "sonner";
+import { CheckoutModal } from "@/components/checkout/CheckoutModal";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function ProductDetailPage({
   params,
@@ -21,12 +23,14 @@ export default function ProductDetailPage({
   const [product, setProduct] = useState<Product | null>(null);
   const [recommendations, setRecommendations] = useState<Product[]>([]);
   const [selectedImage, setSelectedImage] = useState("");
-  const [selectedSize, setSelectedSize] = useState("M");
+  const [selectedSize, setSelectedSize] = useState(""); // Default to empty so they must choose!
   const [isLiked, setIsLiked] = useState(false);
   const [gallery, setGallery] = useState<string[]>([]);
 
-  // Simulation interactive states for photo action bar
+  // Simulation interactive states
   const [interactionMode, setInteractionMode] = useState<"zoom" | "pan" | "fullscreen">("zoom");
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [activeBoutiqueModal, setActiveBoutiqueModal] = useState<"none" | "lookbook" | "care" | "sizing">("none");
 
   useEffect(() => {
     const products = getLocalProducts();
@@ -81,22 +85,41 @@ export default function ProductDetailPage({
 
   const handleAddToCart = () => {
     if (!product) return;
+    if (!selectedSize) {
+      toast.error("Please select a size first.");
+      return;
+    }
+    
     const savedCart = localStorage.getItem("rich-lady-cart");
-    let currentCart: Product[] = savedCart ? JSON.parse(savedCart) : [];
+    let currentCart: any[] = savedCart ? JSON.parse(savedCart) : [];
 
-    if (!currentCart.some(item => item.id === product.id)) {
-      const updated = [...currentCart, product];
+    const exists = currentCart.some(item => item.id === product.id && item.selectedSize === selectedSize);
+    if (!exists) {
+      const cartItem = {
+        ...product,
+        selectedSize: selectedSize
+      };
+      const updated = [...currentCart, cartItem];
       localStorage.setItem("rich-lady-cart", JSON.stringify(updated));
       window.dispatchEvent(new Event("cart-updated"));
       toast.success(`${product.name} (Size: ${selectedSize}) added to bag!`);
     } else {
-      toast.info(`${product.name} is already in your bag`);
+      toast.info(`${product.name} in Size: ${selectedSize} is already in your bag`);
     }
+  };
+
+  const handleBuyNow = () => {
+    if (!product) return;
+    if (!selectedSize) {
+      toast.error("Please select a size first.");
+      return;
+    }
+    setIsCheckoutOpen(true);
   };
 
   const handleWhatsAppConsult = () => {
     if (!product) return;
-    const message = `Hello Rich Lady Boutique! I'm interested in looking at the details for "${product.name}" (Price: ₹${product.price}). Can you please share more details or color variants?`;
+    const message = `Hello Rich Lady Boutique! I'm interested in looking at the details for "${product.name}"${selectedSize ? ` (Size: ${selectedSize})` : ""} (Price: ₹${product.price}). Can you please share more details or color variants?`;
     const encoded = encodeURIComponent(message);
     window.open(`https://wa.me/919030443306?text=${encoded}`, "_blank");
   };
@@ -108,8 +131,8 @@ export default function ProductDetailPage({
     }
   };
 
-  const handleDownload = (type: string) => {
-    toast.success(`Downloading ${type} for ${product?.name}...`);
+  const handleDownload = (type: "lookbook" | "care" | "sizing") => {
+    setActiveBoutiqueModal(type);
   };
 
   if (!product) {
@@ -285,21 +308,21 @@ export default function ProductDetailPage({
               </p>
               <div className="grid grid-cols-3 gap-3 mt-1">
                 <button
-                  onClick={() => handleDownload("Seasonal Lookbook")}
+                  onClick={() => handleDownload("lookbook")}
                   className="flex items-center justify-center gap-1.5 border border-border-accent py-3 rounded-full hover:border-muted-gold hover:text-muted-gold transition-colors text-[9px] uppercase tracking-wider font-semibold text-secondary-text cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
                   Lookbook Catalog
                 </button>
                 <button
-                  onClick={() => handleDownload("Fabric Care Instructions")}
+                  onClick={() => handleDownload("care")}
                   className="flex items-center justify-center gap-1.5 border border-border-accent py-3 rounded-full hover:border-muted-gold hover:text-muted-gold transition-colors text-[9px] uppercase tracking-wider font-semibold text-secondary-text cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5" />
                   Care Guide (PDF)
                 </button>
                 <button
-                  onClick={() => handleDownload("Bespoke Sizing Chart")}
+                  onClick={() => handleDownload("sizing")}
                   className="flex items-center justify-center gap-1.5 border border-border-accent py-3 rounded-full hover:border-muted-gold hover:text-muted-gold transition-colors text-[9px] uppercase tracking-wider font-semibold text-secondary-text cursor-pointer"
                 >
                   <Maximize2 className="w-3.5 h-3.5" />
@@ -394,9 +417,74 @@ export default function ProductDetailPage({
               </div>
             </div>
 
-            {/* Size & Action Buttons */}
-            <div className="w-full flex flex-col gap-4 mt-2">
+            {/* Size Selector - Custom detailed layout match */}
+            <div className="w-full flex flex-col items-start gap-3 mt-4 border-t border-border-accent/25 pt-6">
+              <div className="flex justify-between items-center w-full">
+                <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted-gold">Select Size</span>
+                {selectedSize ? (
+                  <span className="text-[10px] text-primary-text font-bold bg-secondary-bg px-2.5 py-0.5 rounded-full border border-border-accent/40">
+                    Size: {selectedSize}
+                  </span>
+                ) : (
+                  <span className="text-[9px] text-red-600 font-bold uppercase tracking-wider animate-pulse flex items-center gap-1">
+                    <HelpCircle className="w-3.5 h-3.5" /> Please choose a size
+                  </span>
+                )}
+              </div>
               
+              {/* Kids Sizes Group */}
+              <div className="flex flex-col gap-2 w-full mt-1.5">
+                <span className="text-[8px] uppercase tracking-[0.25em] text-secondary-text/60 font-bold">Kids Sizes</span>
+                <div className="flex flex-wrap gap-2">
+                  {["Kids (4-6Y)", "Kids (7-9Y)", "Kids (10-12Y)"].map((sz) => (
+                    <button
+                      key={sz}
+                      onClick={() => setSelectedSize(sz)}
+                      className={`px-4 py-2 rounded-full border text-[9px] uppercase font-semibold tracking-wider transition-all duration-medium cursor-pointer ${
+                        selectedSize === sz
+                          ? "bg-forest-green text-primary-bg border-forest-green shadow-xs"
+                          : "bg-card border-border-accent/40 text-primary-text hover:border-muted-gold"
+                      }`}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Adults/Standard Sizes Group */}
+              <div className="flex flex-col gap-2 w-full mt-2">
+                <span className="text-[8px] uppercase tracking-[0.25em] text-secondary-text/60 font-bold">Adult Standard &amp; Plus Sizes</span>
+                <div className="flex flex-wrap gap-2">
+                  {["XS", "S", "M", "L", "XL", "XXL", "XXXL"].map((sz) => (
+                    <button
+                      key={sz}
+                      onClick={() => setSelectedSize(sz)}
+                      className={`w-10 h-10 rounded-full border text-[10px] font-bold transition-all duration-medium cursor-pointer flex items-center justify-center ${
+                        selectedSize === sz
+                          ? "bg-forest-green text-primary-bg border-forest-green shadow-sm"
+                          : "bg-card border-border-accent/40 text-primary-text hover:border-muted-gold"
+                      }`}
+                    >
+                      {sz}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Size & Action Buttons */}
+            <div className="w-full flex flex-col gap-3 mt-4">
+              
+              {/* Buy Now Button (Razorpay Checkout) */}
+              <button
+                onClick={handleBuyNow}
+                className="w-full bg-[#0b162f] hover:bg-[#152449] text-white py-4 text-[10px] font-sans font-semibold tracking-widest uppercase rounded-full border border-blue-500/20 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              >
+                <CreditCard className="w-4 h-4 text-blue-400" />
+                Buy Now (Razorpay Secure)
+              </button>
+
               {/* Add to Bag and Wishlist Grid */}
               <div className="grid grid-cols-12 gap-3 w-full">
                 <button
@@ -412,7 +500,7 @@ export default function ProductDetailPage({
                   className="col-span-2 border border-border-accent/40 hover:border-red-700 hover:text-red-700 rounded-full flex items-center justify-center bg-card shadow-xs transition-colors cursor-pointer text-secondary-text"
                   aria-label="Toggle wishlist"
                 >
-                  <Heart className={`w-5 h-5 ${isLiked ? "fill-red-700 text-red-700 text-red-700" : ""}`} />
+                  <Heart className={`w-5 h-5 ${isLiked ? "fill-red-700 text-red-700" : ""}`} />
                 </button>
               </div>
 
@@ -469,6 +557,222 @@ export default function ProductDetailPage({
         )}
 
       </div>
+
+      {/* RENDER MODAL 1: Razorpay Checkout Dialog */}
+      <CheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        product={product}
+        totalAmount={product.price}
+        isCartCheckout={false}
+      />
+
+      {/* RENDER MODAL 2: Lookbook Catalog Overlay */}
+      <AnimatePresence>
+        {activeBoutiqueModal === "lookbook" && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveBoutiqueModal("none")}
+              className="fixed inset-0 bg-black/60 z-50 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="fixed inset-x-4 bottom-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full max-w-xl bg-primary-bg border border-border-accent/40 rounded-[2rem] shadow-luxury z-50 overflow-hidden font-sans p-6 max-h-[85vh] flex flex-col"
+            >
+              <div className="flex justify-between items-center border-b border-border-accent/25 pb-4 mb-4">
+                <span className="font-serif text-base text-primary-text font-semibold">Seasonal Lookbook Catalog</span>
+                <button onClick={() => setActiveBoutiqueModal("none")} className="p-1 rounded-full hover:bg-secondary-bg text-secondary-text">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto flex flex-col gap-4 text-xs pr-2">
+                <p className="text-secondary-text font-light leading-relaxed">
+                  Explore preview designs from our latest artisan collection. Handcrafted with precision by master weavers across Rajamahendravaram.
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  {gallery.map((img, i) => (
+                    <div key={i} className="aspect-[4/5] rounded-lg overflow-hidden border border-border-accent/30 shadow-xs relative group bg-card">
+                      <img src={img} alt="Lookbook design" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-medium" />
+                      <div className="absolute bottom-2 left-2 bg-primary-bg/85 px-2 py-0.5 rounded text-[8px] uppercase tracking-wider font-semibold border border-border-accent/45">
+                        Plate {i + 1}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* RENDER MODAL 3: Care Guide Overlay */}
+      <AnimatePresence>
+        {activeBoutiqueModal === "care" && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveBoutiqueModal("none")}
+              className="fixed inset-0 bg-black/60 z-50 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="fixed inset-x-4 bottom-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full max-w-md bg-primary-bg border border-border-accent/40 rounded-[2rem] shadow-luxury z-50 overflow-hidden font-sans p-6"
+            >
+              <div className="flex justify-between items-center border-b border-border-accent/25 pb-4 mb-4">
+                <span className="font-serif text-base text-primary-text font-semibold">Fabric Care Guide (PDF)</span>
+                <button onClick={() => setActiveBoutiqueModal("none")} className="p-1 rounded-full hover:bg-secondary-bg text-secondary-text">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex flex-col gap-4 text-xs">
+                <p className="text-secondary-text font-light leading-relaxed">
+                  Proper maintenance ensures the timeless beauty and durability of your luxury boutique garments.
+                </p>
+                <div className="flex flex-col gap-3">
+                  <div className="border-l-2 border-muted-gold pl-3">
+                    <span className="font-bold text-primary-text block">1. Washing Standards</span>
+                    <span className="text-secondary-text font-light">Dry clean only is highly recommended for all pure silk, zari, and embroidered work. Never use strong bleaching detergents.</span>
+                  </div>
+                  <div className="border-l-2 border-muted-gold pl-3">
+                    <span className="font-bold text-primary-text block">2. Ironing Standards</span>
+                    <span className="text-secondary-text font-light">Cool iron on reverse side. Use a protective press cloth. Never iron directly over zari or heavy hand-embroidery details.</span>
+                  </div>
+                  <div className="border-l-2 border-muted-gold pl-3">
+                    <span className="font-bold text-primary-text block">3. Storage Standards</span>
+                    <span className="text-secondary-text font-light">Store in a cool, dry place wrapped in soft muslin cloth. Never hang heavy lehengas as it can warp shape. Store Kundan jewelry in air-tight velvet cases.</span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* RENDER MODAL 4: Sizing Chart Overlay */}
+      <AnimatePresence>
+        {activeBoutiqueModal === "sizing" && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveBoutiqueModal("none")}
+              className="fixed inset-0 bg-black/60 z-50 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              className="fixed inset-x-4 bottom-4 md:inset-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 w-full max-w-lg bg-primary-bg border border-border-accent/40 rounded-[2rem] shadow-luxury z-50 overflow-hidden font-sans p-6 max-h-[85vh] flex flex-col"
+            >
+              <div className="flex justify-between items-center border-b border-border-accent/25 pb-4 mb-4">
+                <span className="font-serif text-base text-primary-text font-semibold">Bespoke Sizing Chart</span>
+                <button onClick={() => setActiveBoutiqueModal("none")} className="p-1 rounded-full hover:bg-secondary-bg text-secondary-text">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto pr-2">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-border-accent/40 font-serif text-muted-gold font-bold">
+                      <th className="py-2.5">Size</th>
+                      <th className="py-2.5">Chest (in)</th>
+                      <th className="py-2.5">Waist (in)</th>
+                      <th className="py-2.5">Hips (in)</th>
+                      <th className="py-2.5">Garment Length (in)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-b border-border-accent/15 text-secondary-text">
+                      <td className="py-2.5 font-bold text-primary-text">Kids (4-6Y)</td>
+                      <td className="py-2.5">24"</td>
+                      <td className="py-2.5">22"</td>
+                      <td className="py-2.5">26"</td>
+                      <td className="py-2.5">28"</td>
+                    </tr>
+                    <tr className="border-b border-border-accent/15 text-secondary-text">
+                      <td className="py-2.5 font-bold text-primary-text">Kids (7-9Y)</td>
+                      <td className="py-2.5">27"</td>
+                      <td className="py-2.5">25"</td>
+                      <td className="py-2.5">29"</td>
+                      <td className="py-2.5">34"</td>
+                    </tr>
+                    <tr className="border-b border-border-accent/15 text-secondary-text">
+                      <td className="py-2.5 font-bold text-primary-text">Kids (10-12Y)</td>
+                      <td className="py-2.5">30"</td>
+                      <td className="py-2.5">28"</td>
+                      <td className="py-2.5">32"</td>
+                      <td className="py-2.5">40"</td>
+                    </tr>
+                    <tr className="border-b border-border-accent/15 text-secondary-text">
+                      <td className="py-2.5 font-bold text-primary-text">XS</td>
+                      <td className="py-2.5">32"</td>
+                      <td className="py-2.5">26"</td>
+                      <td className="py-2.5">35"</td>
+                      <td className="py-2.5">44"</td>
+                    </tr>
+                    <tr className="border-b border-border-accent/15 text-secondary-text">
+                      <td className="py-2.5 font-bold text-primary-text">S</td>
+                      <td className="py-2.5">34"</td>
+                      <td className="py-2.5">28"</td>
+                      <td className="py-2.5">37"</td>
+                      <td className="py-2.5">44"</td>
+                    </tr>
+                    <tr className="border-b border-border-accent/15 text-secondary-text">
+                      <td className="py-2.5 font-bold text-primary-text">M</td>
+                      <td className="py-2.5">36"</td>
+                      <td className="py-2.5">30"</td>
+                      <td className="py-2.5">39"</td>
+                      <td className="py-2.5">45"</td>
+                    </tr>
+                    <tr className="border-b border-border-accent/15 text-secondary-text">
+                      <td className="py-2.5 font-bold text-primary-text">L</td>
+                      <td className="py-2.5">38"</td>
+                      <td className="py-2.5">32"</td>
+                      <td className="py-2.5">41"</td>
+                      <td className="py-2.5">45"</td>
+                    </tr>
+                    <tr className="border-b border-border-accent/15 text-secondary-text">
+                      <td className="py-2.5 font-bold text-primary-text">XL</td>
+                      <td className="py-2.5">40"</td>
+                      <td className="py-2.5">34"</td>
+                      <td className="py-2.5">43"</td>
+                      <td className="py-2.5">46"</td>
+                    </tr>
+                    <tr className="border-b border-border-accent/15 text-secondary-text">
+                      <td className="py-2.5 font-bold text-primary-text">XXL</td>
+                      <td className="py-2.5">42"</td>
+                      <td className="py-2.5">36"</td>
+                      <td className="py-2.5">45"</td>
+                      <td className="py-2.5">46"</td>
+                    </tr>
+                    <tr className="border-b border-border-accent/15 text-secondary-text">
+                      <td className="py-2.5 font-bold text-primary-text">XXXL</td>
+                      <td className="py-2.5">44"</td>
+                      <td className="py-2.5">38"</td>
+                      <td className="py-2.5">47"</td>
+                      <td className="py-2.5">46"</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p className="text-[10px] text-secondary-text mt-4 font-light leading-relaxed">
+                  * All measurements are in inches. Custom stitching options are available. Reach out via WhatsApp consultation for personalized sizing configurations.
+                </p>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
