@@ -9,36 +9,37 @@ export const navigationItems: NavigationItem[] = [
     label: "Collection",
     href: "/catalog",
     dropdownItems: [
-      { label: "Sarees", href: "/catalog" },
-      { label: "Kurtis", href: "/catalog" },
-      { label: "Dress Materials", href: "/catalog" },
-      { label: "Lehengas", href: "/catalog" },
-      { label: "Gowns", href: "/catalog" },
-      { label: "Accessories", href: "/catalog" }
+      { label: "Sarees", href: "/catalog?category=Sarees" },
+      { label: "Kurtis", href: "/catalog?category=Kurtis" },
+      { label: "Dress Materials", href: "/catalog?category=Dress Materials" },
+      { label: "Lehengas", href: "/catalog?category=Lehengas" },
+      { label: "Gowns", href: "/catalog?category=Gowns" },
+      { label: "Western Wear", href: "/catalog?category=Western Wear" },
+      { label: "Accessories", href: "/catalog?category=Accessories" }
     ]
   },
   {
     label: "Sarees",
-    href: "/catalog"
+    href: "/catalog?category=Sarees"
   },
   {
     label: "Kurtis",
-    href: "/catalog"
+    href: "/catalog?category=Kurtis"
   },
   {
     label: "Dress Materials",
-    href: "/catalog"
+    href: "/catalog?category=Dress Materials"
   },
   {
     label: "Lehengas",
-    href: "/catalog"
+    href: "/catalog?category=Lehengas"
   },
   {
     label: "Accessories",
-    href: "/catalog"
+    href: "/catalog?category=Accessories"
   },
   {
     label: "Sale",
-    href: "/catalog"
+    href: "/catalog?category=Sale"
   }
 ];

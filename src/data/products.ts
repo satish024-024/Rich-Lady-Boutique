@@ -110,5 +110,77 @@ export const productsData: Product[] = [
     reviewsCount: 16,
     isNewArrival: true,
     description: "Flowing georgette Anarkali suit set with premium chikankari embroidery and mirror highlights."
+  },
+  {
+    id: "designer-coord-set",
+    name: "Linen Designer Co-ord Set",
+    price: 2799,
+    originalPrice: 3999,
+    imageUrl: "/images/cat_new_arrivals.jpg",
+    category: "Western Wear",
+    rating: 4.8,
+    reviewsCount: 7,
+    isNewArrival: true,
+    isSale: true,
+    description: "Premium cotton-linen designer co-ord set featuring a relaxed-fit blazer and tailored trousers."
+  },
+  {
+    id: "georgette-floral-maxi",
+    name: "Georgette Floral Maxi Dress",
+    price: 1899,
+    imageUrl: "/images/cat_new_arrivals.jpg",
+    category: "Western Wear",
+    rating: 4.6,
+    reviewsCount: 5,
+    isNewArrival: true,
+    description: "Elegant georgette floral maxi dress with subtle pleating and a matching fabric belt."
+  },
+  {
+    id: "designer-organza-saree",
+    name: "Hand-Painted Organza Saree",
+    price: 3299,
+    originalPrice: 4500,
+    imageUrl: "/images/cat_sarees.jpg",
+    category: "Sarees",
+    rating: 4.9,
+    reviewsCount: 19,
+    isSale: true,
+    description: "Graceful pure organza saree with hand-painted floral motifs and a delicate scallop border."
+  },
+  {
+    id: "mirror-work-lehenga",
+    name: "Pastel Mirror Work Lehenga",
+    price: 6499,
+    originalPrice: 8500,
+    imageUrl: "/images/cat_lehengas.jpg",
+    category: "Lehengas",
+    rating: 5.0,
+    reviewsCount: 12,
+    isSale: true,
+    description: "Stunning mirror work lehenga choli set in a pastel pink color, perfect for wedding celebrations."
+  },
+  {
+    id: "chikankari-straight-kurti",
+    name: "Chikankari Georgette Kurti",
+    price: 1599,
+    originalPrice: 2299,
+    imageUrl: "/images/cat_kurtis.jpg",
+    category: "Kurtis",
+    rating: 4.8,
+    reviewsCount: 10,
+    isSale: true,
+    description: "Classic straight-fit georgette kurti with fine Chikankari hand embroidery and inner lining."
+  },
+  {
+    id: "pearl-choker-necklace",
+    name: "Freshwater Pearl Choker Set",
+    price: 1499,
+    originalPrice: 1999,
+    imageUrl: "/images/cat_accessories.jpg",
+    category: "Accessories",
+    rating: 4.7,
+    reviewsCount: 9,
+    isSale: true,
+    description: "Premium freshwater pearl choker set with matching stud earrings and gold-plated clasp."
   }
 ];

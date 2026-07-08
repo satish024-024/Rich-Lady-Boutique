@@ -103,21 +103,17 @@ export function Header({ onSearchClick, onCartClick, onWishlistClick }: HeaderPr
 
         {/* Main Floating Navigation Bar */}
         <nav
-          className={`w-full transition-all duration-300 ${
+          className={`w-full transition-all duration-300 sticky top-0 bg-primary-bg/95 backdrop-blur-md border-b z-50 text-primary-text ${
             isScrolled
-              ? "fixed top-0 left-0 bg-primary-bg/90 backdrop-blur-md shadow-md py-3 border-b border-border-accent/40 z-50"
-              : isHome
-              ? "absolute top-0 left-0 bg-transparent py-5 border-b border-transparent z-40 text-white"
-              : "absolute bg-primary-bg py-5 border-b border-border-accent/20 z-40 text-primary-text"
+              ? "py-3 shadow-md border-border-accent/40"
+              : "py-5 border-border-accent/20"
           }`}
         >
           <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
             {/* Logo Left */}
             <Link href="/" className="flex items-center gap-3 group relative select-none">
-              <div className={`w-10 h-10 border rounded-full flex items-center justify-center bg-card transition-colors p-1 shadow-xs ${
-                (!isScrolled && isHome) ? "border-white/40 group-hover:border-white" : "border-muted-gold/45 group-hover:border-muted-gold"
-              }`}>
-                <svg viewBox="0 0 100 100" fill="none" className={`w-7 h-7 ${(!isScrolled && isHome) ? "text-white" : "text-muted-gold"}`}>
+              <div className="w-10 h-10 border rounded-full flex items-center justify-center bg-card transition-colors p-1 shadow-xs border-muted-gold/45 group-hover:border-muted-gold">
+                <svg viewBox="0 0 100 100" fill="none" className="w-7 h-7 text-muted-gold">
                   <circle cx="50" cy="50" r="44" stroke="currentColor" strokeWidth="0.8" />
                   <circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="0.4" strokeDasharray="2 2" />
                   <path d="M50 20 C46 34 32 44 32 55 C32 66 50 74 50 74 C50 74 68 66 68 55 C68 44 54 34 50 20 Z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -126,15 +122,11 @@ export function Header({ onSearchClick, onCartClick, onWishlistClick }: HeaderPr
                 </svg>
               </div>
               <div className="flex flex-col">
-                <span className={`font-serif text-lg md:text-xl tracking-widest uppercase leading-none ${
-                  (!isScrolled && isHome) ? "text-white" : "text-primary-text"
-                }`}>
+                <span className="font-serif text-lg md:text-xl tracking-[0.2em] font-semibold uppercase leading-none text-primary-text">
                   Rich Lady
                 </span>
-                <span className={`text-[9px] uppercase tracking-[0.25em] mt-0.5 ${
-                  (!isScrolled && isHome) ? "text-white/60" : "text-secondary-text"
-                }`}>
-                  Boutique
+                <span className="text-[7.5px] uppercase tracking-[0.32em] mt-1 text-muted-gold font-bold">
+                  The Luxury Atelier
                 </span>
               </div>
             </Link>
@@ -150,9 +142,7 @@ export function Header({ onSearchClick, onCartClick, onWishlistClick }: HeaderPr
                 >
                   <Link
                     href={item.href}
-                    className={`flex items-center gap-1 text-[11px] uppercase tracking-[0.2em] font-sans font-medium hover:text-muted-gold transition-colors py-2 ${
-                      (!isScrolled && isHome) ? "text-white/90" : "text-primary-text"
-                    }`}
+                    className="flex items-center gap-1 text-[11px] uppercase tracking-[0.2em] font-sans font-medium hover:text-muted-gold transition-colors py-2 text-primary-text"
                   >
                     {item.label}
                     {item.dropdownItems && <ChevronDown className="w-3.5 h-3.5 opacity-60" />}
@@ -183,9 +173,7 @@ export function Header({ onSearchClick, onCartClick, onWishlistClick }: HeaderPr
                   onSearchClick();
                   window.dispatchEvent(new Event("open-search"));
                 }}
-                className={`hover:text-muted-gold transition-colors p-1.5 cursor-pointer ${
-                  (!isScrolled && isHome) ? "text-white" : "text-primary-text"
-                }`}
+                className="hover:text-muted-gold transition-colors p-1.5 cursor-pointer text-primary-text"
                 aria-label="Search items"
               >
                 <Search className="w-4.5 h-4.5" />
@@ -193,9 +181,7 @@ export function Header({ onSearchClick, onCartClick, onWishlistClick }: HeaderPr
 
               <button
                 onClick={onWishlistClick}
-                className={`hover:text-muted-gold transition-colors p-1.5 relative cursor-pointer ${
-                  (!isScrolled && isHome) ? "text-white" : "text-primary-text"
-                }`}
+                className="hover:text-muted-gold transition-colors p-1.5 relative cursor-pointer text-primary-text"
                 aria-label="Wishlist items"
               >
                 <Heart className="w-4.5 h-4.5" />
@@ -208,9 +194,7 @@ export function Header({ onSearchClick, onCartClick, onWishlistClick }: HeaderPr
 
               <button
                 onClick={onCartClick}
-                className={`hover:text-muted-gold transition-colors p-1.5 relative cursor-pointer ${
-                  (!isScrolled && isHome) ? "text-white" : "text-primary-text"
-                }`}
+                className="hover:text-muted-gold transition-colors p-1.5 relative cursor-pointer text-primary-text"
                 aria-label="Cart items"
               >
                 <ShoppingBag className="w-4.5 h-4.5" />
@@ -235,10 +219,8 @@ export function Header({ onSearchClick, onCartClick, onWishlistClick }: HeaderPr
               {/* Mobile Menu Burger */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className={`lg:hidden hover:text-muted-gold transition-colors p-1.5 cursor-pointer ${
-                  (!isScrolled && isHome) ? "text-white" : "text-primary-text"
-                }`}
-                aria-label="Open navigation menu"
+                className="lg:hidden hover:text-muted-gold transition-colors p-1.5 cursor-pointer text-primary-text"
+                aria-label="Open menu"
               >
                 <Menu className="w-5 h-5" />
               </button>

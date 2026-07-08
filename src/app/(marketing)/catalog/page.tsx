@@ -1,14 +1,18 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { Heart, ShoppingBag, Search, Sparkles, SlidersHorizontal, Grid, List, ChevronDown } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Heart, ShoppingBag, Search, Sparkles, Grid, List } from "lucide-react";
 import { getLocalProducts } from "@/utils/db";
 import { Product } from "@/types/product";
 import { FadeIn } from "@/components/motion/FadeIn";
 import { toast } from "sonner";
 
-export default function CatalogPage() {
+function CatalogContent() {
+  const searchParams = useSearchParams();
+  const categoryParam = searchParams.get("category");
+
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState("All Designs");
@@ -17,17 +21,48 @@ export default function CatalogPage() {
   const [sortBy, setSortBy] = useState("newest");
   const [wishlist, setWishlist] = useState<string[]>([]);
 
-  // Category filters inspired by reference image
+  // Category filters including special ones
   const categories = [
     "All Designs",
+    "New Arrivals",
     "Sarees",
     "Kurtis",
     "Dress Materials",
     "Lehengas",
     "Gowns",
+    "Western Wear",
     "Accessories",
     "Sale"
   ];
+
+  // Initialize and listen to categoryParam changes
+  useEffect(() => {
+    if (categoryParam) {
+      const matched = categories.find(
+        (c) => c.toLowerCase() === categoryParam.toLowerCase()
+      );
+      if (matched) {
+        setActiveCategory(matched);
+      } else {
+        setActiveCategory("All Designs");
+      }
+    } else {
+      setActiveCategory("All Designs");
+    }
+  }, [categoryParam]);
+
+  // Handle pill clicks
+  const handleCategorySelect = (cat: string) => {
+    setActiveCategory(cat);
+    const newParams = new URLSearchParams(window.location.search);
+    if (cat === "All Designs") {
+      newParams.delete("category");
+    } else {
+      newParams.set("category", cat);
+    }
+    // Smooth URL update without router re-fetch
+    window.history.pushState(null, "", `/catalog?${newParams.toString()}`);
+  };
 
   useEffect(() => {
     let prods = getLocalProducts();
@@ -42,8 +77,12 @@ export default function CatalogPage() {
     }
 
     // Category filter
-    if (activeCategory !== "All Designs") {
-      prods = prods.filter((p) => p.category === activeCategory);
+    if (activeCategory === "New Arrivals") {
+      prods = prods.filter((p) => p.isNewArrival);
+    } else if (activeCategory === "Sale") {
+      prods = prods.filter((p) => p.isSale);
+    } else if (activeCategory !== "All Designs") {
+      prods = prods.filter((p) => p.category.toLowerCase() === activeCategory.toLowerCase());
     }
 
     // Sort logic
@@ -153,7 +192,7 @@ export default function CatalogPage() {
             {categories.map((cat) => (
               <button
                 key={cat}
-                onClick={() => setActiveCategory(cat)}
+                onClick={() => handleCategorySelect(cat)}
                 className={`px-5 py-2 text-[10px] uppercase tracking-wider font-semibold rounded-full border transition-all duration-medium cursor-pointer ${
                   activeCategory === cat
                     ? "bg-forest-green text-primary-bg border-forest-green shadow-sm"
@@ -168,7 +207,6 @@ export default function CatalogPage() {
 
         {/* Wide Promotional Banner Card - layout match */}
         <FadeIn delay={0.15} className="w-full aspect-[21/9] md:aspect-[3/1] bg-card border border-border-accent/40 rounded-lg overflow-hidden relative mb-16 shadow-xs flex items-center">
-          {/* Blurred/Soft background image representing bridal collection */}
           <div className="absolute inset-0 z-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -260,11 +298,18 @@ export default function CatalogPage() {
                           alt={prod.name}
                           className="w-full h-full object-cover transition-transform duration-slow group-hover:scale-[1.02]"
                         />
+
+                        {/* Sale Tag */}
+                        {prod.isSale && (
+                          <span className="absolute top-4 left-4 px-2 py-1 bg-chocolate text-primary-bg text-[8px] uppercase tracking-widest font-bold rounded-xs shadow-xs select-none z-10">
+                            Sale
+                          </span>
+                        )}
                         
                         {/* Wishlist toggle */}
                         <button
                           onClick={(e) => toggleWishlist(prod, e)}
-                          className="absolute top-4 right-4 p-2 bg-primary-bg/70 hover:bg-primary-bg backdrop-blur-xs rounded-full shadow-xs text-primary-text hover:text-red-700 transition-colors duration-medium cursor-pointer"
+                          className="absolute top-4 right-4 p-2 bg-primary-bg/70 hover:bg-primary-bg backdrop-blur-xs rounded-full shadow-xs text-primary-text hover:text-red-700 transition-colors duration-medium cursor-pointer z-10"
                           aria-label={isLiked ? "Remove from wishlist" : "Add to wishlist"}
                         >
                           <Heart
@@ -296,9 +341,16 @@ export default function CatalogPage() {
                             {prod.category}
                           </span>
                         </div>
-                        <span className="text-xs font-sans text-chocolate font-semibold">
-                          ₹{prod.price.toLocaleString("en-IN")}
-                        </span>
+                        <div className="flex flex-col items-end">
+                          <span className="text-xs font-sans text-chocolate font-semibold">
+                            ₹{prod.price.toLocaleString("en-IN")}
+                          </span>
+                          {prod.isSale && prod.originalPrice && (
+                            <span className="text-[10px] font-sans text-secondary-text/60 line-through mt-0.5">
+                              ₹{prod.originalPrice.toLocaleString("en-IN")}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </Link>
                   </FadeIn>
@@ -324,6 +376,12 @@ export default function CatalogPage() {
                           alt={prod.name}
                           className="w-full h-full object-cover"
                         />
+                        {/* Sale Tag */}
+                        {prod.isSale && (
+                          <span className="absolute top-2 left-2 px-1.5 py-0.5 bg-chocolate text-primary-bg text-[6px] uppercase tracking-widest font-bold rounded-xs shadow-xs select-none">
+                            Sale
+                          </span>
+                        )}
                       </div>
                       
                       <div className="flex flex-col">
@@ -338,9 +396,16 @@ export default function CatalogPage() {
                     </Link>
 
                     <div className="flex items-center gap-6">
-                      <span className="text-xs md:text-sm font-sans text-chocolate font-semibold">
-                        ₹{prod.price.toLocaleString("en-IN")}
-                      </span>
+                      <div className="flex flex-col items-end">
+                        <span className="text-xs md:text-sm font-sans text-chocolate font-semibold">
+                          ₹{prod.price.toLocaleString("en-IN")}
+                        </span>
+                        {prod.isSale && prod.originalPrice && (
+                          <span className="text-[10px] font-sans text-secondary-text/60 line-through mt-0.5">
+                            ₹{prod.originalPrice.toLocaleString("en-IN")}
+                          </span>
+                        )}
+                      </div>
 
                       <div className="flex gap-2">
                         <button
@@ -385,5 +450,17 @@ export default function CatalogPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function CatalogPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full min-h-screen bg-primary-bg flex items-center justify-center">
+        <p className="font-serif italic text-lg text-secondary-text animate-pulse">Loading Collection...</p>
+      </div>
+    }>
+      <CatalogContent />
+    </Suspense>
   );
 }

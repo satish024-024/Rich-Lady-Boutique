@@ -25,29 +25,29 @@ export function Journey() {
           </div>
         </FadeIn>
 
-        {/* Interactive Steps Slider */}
-        <FadeIn delay={0.15} duration="slow" className="w-full overflow-x-auto no-scrollbar py-6">
-          <div className="min-w-[1200px] flex items-stretch gap-8 relative px-4">
+        {/* Journey Grid */}
+        <FadeIn delay={0.15} duration="slow" className="w-full py-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 max-w-7xl mx-auto px-4 relative">
             
-            {/* SVG Connecting Flow Line */}
-            <div className="absolute top-12 inset-x-0 h-[1px] bg-gradient-to-r from-muted-gold/10 via-muted-gold/45 to-muted-gold/10 -z-10" />
+            {/* Horizontal Connecting Flow Line (only visible on large screens) */}
+            <div className="hidden lg:block absolute top-12 left-12 right-12 h-[1px] bg-gradient-to-r from-muted-gold/15 via-muted-gold/50 to-muted-gold/15 -z-10" />
 
             {journeyData.map((node) => (
               <div
                 key={node.id}
-                className="w-[280px] bg-card border border-border-accent/35 rounded-2xl p-6 shadow-xs hover:shadow-luxury hover:border-muted-gold/45 transition-all duration-medium flex flex-col items-start gap-4 relative"
+                className="bg-card border border-border-accent/30 rounded-2xl p-6 md:p-8 shadow-xs hover:shadow-luxury hover:border-muted-gold/40 transition-all duration-medium flex flex-col items-start gap-5 relative group"
               >
                 {/* step indicator circle */}
-                <div className="w-10 h-10 rounded-full bg-forest-green border border-muted-gold/30 flex items-center justify-center text-primary-bg text-[10px] font-sans font-bold shadow-xs">
+                <div className="w-10 h-10 rounded-full bg-forest-green border border-muted-gold/20 flex items-center justify-center text-primary-bg text-xs font-sans font-bold shadow-xs group-hover:scale-105 transition-transform duration-medium">
                   {node.stepNumber}
                 </div>
 
                 {/* Info titles */}
-                <div className="flex flex-col gap-1.5">
-                  <h3 className="font-serif text-sm text-primary-text font-semibold">
+                <div className="flex flex-col gap-2">
+                  <h3 className="font-serif text-sm md:text-base text-primary-text font-normal tracking-wide group-hover:text-muted-gold transition-colors duration-medium">
                     {node.title}
                   </h3>
-                  <p className="text-[10px] font-sans font-light text-secondary-text leading-relaxed">
+                  <p className="text-[11px] font-sans font-light text-secondary-text leading-relaxed">
                     {node.description}
                   </p>
                 </div>
@@ -56,13 +56,6 @@ export function Journey() {
 
           </div>
         </FadeIn>
-
-        {/* Mobile Swipe Guide */}
-        <div className="flex justify-center mt-6 opacity-60">
-          <span className="text-[9px] uppercase tracking-[0.2em] text-secondary-text animate-pulse">
-            ← Scroll horizontally to trace our boutique journey →
-          </span>
-        </div>
 
       </div>
     </section>
