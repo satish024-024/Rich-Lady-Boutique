@@ -1,29 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
-import { Mail, ArrowRight } from "lucide-react";
+import React from "react";
+import { MessageCircle, CheckCircle } from "lucide-react";
 import { FadeIn } from "@/components/motion/FadeIn";
-import { toast } from "sonner";
 
 export function Newsletter() {
-  const [email, setEmail] = useState("");
-
-  const handleSubscribe = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !email.includes("@")) {
-      toast.error("Please enter a valid email address");
-      return;
-    }
-    
-    // Future: Supabase email subscriptions insert
-    toast.success("Thank you for subscribing to Rich Lady updates!");
-    setEmail("");
+  const handleJoinCommunity = () => {
+    window.open("https://wa.me/919030443306?text=Hello%20Rich%20Lady%20Boutique!%20I'd%20like%20to%20join%20your%20exclusive%20WhatsApp%20community%20to%20receive%20new%20arrivals%20updates.", "_blank");
   };
 
+  const communityBenefits = [
+    "Instant New Arrivals Alerts",
+    "Festival Collections Early Access",
+    "Exclusive Community Offers",
+    "Direct Fashion Expert Consultation"
+  ];
+
   return (
-    <section className="w-full py-16 bg-card border-b border-border-accent/40 select-none font-sans">
+    <section className="w-full py-16 bg-card border-b border-border-accent/40 select-none font-sans" id="whatsapp-join">
       <div className="max-w-4xl mx-auto px-6">
-        <div className="bg-[#FAF8F3]/60 border border-border-accent/30 p-8 md:p-12 rounded-md shadow-xs flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
+        <div className="bg-[#FAF8F3]/60 border border-border-accent/35 p-8 md:p-12 rounded-[2rem] shadow-xs flex flex-col md:flex-row items-center justify-between gap-8 relative overflow-hidden">
           
           {/* Subtle logo silhouette bg marker */}
           <div className="absolute -left-6 -bottom-6 w-24 h-36 opacity-[0.03] pointer-events-none text-muted-gold">
@@ -32,40 +28,40 @@ export function Newsletter() {
             </svg>
           </div>
 
-          {/* Left Text */}
+          {/* Left Text & Benefits */}
           <FadeIn className="flex-1 flex gap-4 items-start">
-            <div className="w-10 h-10 border border-muted-gold/40 rounded-full flex items-center justify-center text-muted-gold mt-1 flex-shrink-0">
-              <Mail className="w-4 h-4 stroke-[1.25]" />
+            <div className="w-12 h-12 border border-muted-gold/45 rounded-full flex items-center justify-center text-muted-gold mt-1 flex-shrink-0 bg-card shadow-xs">
+              <MessageCircle className="w-5 h-5 stroke-[1.25] fill-current text-emerald-600" />
             </div>
-            <div className="flex flex-col">
-              <h3 className="font-serif text-lg md:text-xl text-primary-text font-normal mb-1.5">
-                Stay Updated with Rich Lady
+            <div className="flex flex-col gap-3">
+              <h3 className="font-serif text-lg md:text-xl text-primary-text font-normal">
+                Join Our WhatsApp Community
               </h3>
               <p className="text-xs text-secondary-text leading-relaxed font-light max-w-sm">
-                Get updates on new arrivals, collections, and exclusive boutique offers.
+                Unlock early access to designer catalog releases and special boutique edits directly inside your WhatsApp.
               </p>
+              
+              {/* Benefits list */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mt-2">
+                {communityBenefits.map((benefit, i) => (
+                  <div key={i} className="flex items-center gap-1.5 text-[9px] uppercase tracking-wider font-semibold text-secondary-text">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>{benefit}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </FadeIn>
 
-          {/* Right Input Form */}
-          <FadeIn delay={0.1} className="w-full md:w-auto flex-shrink-0 md:max-w-md flex-1">
-            <form onSubmit={handleSubscribe} className="flex w-full border border-border-accent bg-card p-1.5 rounded-xs focus-within:border-muted-gold transition-colors">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email address"
-                className="w-full bg-transparent px-3 text-xs text-primary-text placeholder-secondary-text/50 outline-none border-none focus:ring-0 focus:outline-none"
-                aria-label="Email address for subscription"
-              />
-              <button
-                type="submit"
-                className="bg-forest-green hover:bg-[#1a2b24] text-primary-bg px-5 py-2.5 text-[9px] font-sans font-semibold tracking-widest uppercase rounded-xs border border-muted-gold/20 hover:border-muted-gold transition-all duration-300 flex items-center gap-1.5 cursor-pointer flex-shrink-0 shadow-xs"
-              >
-                Subscribe
-                <ArrowRight className="w-3 h-3 text-muted-gold" />
-              </button>
-            </form>
+          {/* Right Action Button */}
+          <FadeIn delay={0.1} className="w-full md:w-auto flex-shrink-0 flex justify-center">
+            <button
+              onClick={handleJoinCommunity}
+              className="bg-forest-green hover:bg-[#1a2b24] text-primary-bg px-8 py-4 rounded-full border border-muted-gold/30 hover:border-muted-gold transition-all duration-300 flex items-center gap-2 cursor-pointer shadow-sm hover:shadow-luxury text-[10px] uppercase tracking-widest font-sans font-bold"
+            >
+              <MessageCircle className="w-4 h-4 text-emerald-400 fill-current" />
+              Join Community
+            </button>
           </FadeIn>
 
         </div>

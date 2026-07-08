@@ -6,6 +6,8 @@ import { Footer } from "@/components/layout/Footer";
 import { SearchOverlay } from "@/components/layout/SearchOverlay";
 import { CartDrawer } from "@/components/layout/CartDrawer";
 import { WishlistDrawer } from "@/components/layout/WishlistDrawer";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { WhatsAppButton } from "@/components/layout/WhatsAppButton";
 
 export default function MarketingLayout({
   children,
@@ -26,10 +28,14 @@ export default function MarketingLayout({
       />
 
       {/* Primary Page Viewport */}
-      <main className="flex-grow pt-0">{children}</main>
+      <main className="flex-grow pt-0 pb-16 md:pb-0">{/* Added pb-16 on mobile to avoid overlapping sticky mobile bottom nav */}{children}</main>
 
       {/* Premium Editorial Footer */}
       <Footer />
+
+      {/* Sticky Navigation & WhatsApp Prompts */}
+      <MobileBottomNav />
+      <WhatsAppButton />
 
       {/* Accessible Interactive Overlays */}
       <SearchOverlay isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />

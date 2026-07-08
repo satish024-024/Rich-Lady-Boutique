@@ -5,42 +5,48 @@ export const categoriesData: Category[] = [
     id: "sarees",
     title: "Sarees",
     imageUrl: "/images/cat_sarees.jpg",
-    link: "#sarees"
+    link: "/catalog?category=sarees"
   },
   {
     id: "kurtis",
     title: "Kurtis",
     imageUrl: "/images/cat_kurtis.jpg",
-    link: "#kurtis"
+    link: "/catalog?category=kurtis"
   },
   {
     id: "dress-materials",
     title: "Dress Materials",
     imageUrl: "/images/cat_dress_materials.jpg",
-    link: "#dress-materials"
+    link: "/catalog?category=dress-materials"
   },
   {
     id: "lehengas",
     title: "Lehengas",
     imageUrl: "/images/cat_lehengas.jpg",
-    link: "#lehengas"
+    link: "/catalog?category=lehengas"
   },
   {
     id: "gowns",
     title: "Gowns",
     imageUrl: "/images/cat_gowns.jpg",
-    link: "#gowns"
+    link: "/catalog?category=gowns"
+  },
+  {
+    id: "western-wear",
+    title: "Western Wear",
+    imageUrl: "/images/cat_western.jpg",
+    link: "/catalog?category=western-wear"
   },
   {
     id: "accessories",
     title: "Accessories",
     imageUrl: "/images/cat_accessories.jpg",
-    link: "#accessories"
+    link: "/catalog?category=accessories"
   },
   {
     id: "new-arrivals",
     title: "New Arrivals",
     imageUrl: "/images/cat_new_arrivals.jpg",
-    link: "#new-arrivals"
+    link: "/catalog?category=new-arrivals"
   }
 ];

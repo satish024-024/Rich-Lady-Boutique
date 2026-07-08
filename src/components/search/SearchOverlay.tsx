@@ -7,15 +7,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getLocalProducts } from "@/utils/db";
 import { Product } from "@/types/product";
 
-interface SearchOverlayProps {
-  isOpen?: boolean;
-  onClose?: () => void;
-}
-
-export function SearchOverlay({ isOpen: propIsOpen, onClose: propOnClose }: SearchOverlayProps) {
+export function SearchOverlay() {
   const router = useRouter();
-  const [localIsOpen, setLocalIsOpen] = useState(false);
-  const isOpen = propIsOpen !== undefined ? propIsOpen : localIsOpen;
+  const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Product[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -54,9 +48,7 @@ export function SearchOverlay({ isOpen: propIsOpen, onClose: propOnClose }: Sear
 
   useEffect(() => {
     const handleOpen = () => {
-      if (propIsOpen === undefined) {
-        setLocalIsOpen(true);
-      }
+      setIsOpen(true);
       setTimeout(() => inputRef.current?.focus(), 150);
     };
 
@@ -71,22 +63,7 @@ export function SearchOverlay({ isOpen: propIsOpen, onClose: propOnClose }: Sear
     return () => {
       window.removeEventListener("open-search", handleOpen);
     };
-  }, [propIsOpen]);
-
-  // Focus and scroll lock
-  useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-      setQuery("");
-      setResults([]);
-    }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen]);
+  }, []);
 
   // Update results based on query
   useEffect(() => {
@@ -104,11 +81,7 @@ export function SearchOverlay({ isOpen: propIsOpen, onClose: propOnClose }: Sear
   }, [query]);
 
   const handleClose = () => {
-    if (propOnClose) {
-      propOnClose();
-    } else {
-      setLocalIsOpen(false);
-    }
+    setIsOpen(false);
     setQuery("");
   };
 

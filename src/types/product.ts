@@ -10,4 +10,8 @@ export interface Product {
   isNewArrival?: boolean;
   isSale?: boolean;
   originalPrice?: number;
+  fabric?: string;
+  sizes?: string[];
+  collectionTag?: string;
+  hoverImageUrl?: string;
 }
