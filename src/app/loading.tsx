@@ -29,7 +29,7 @@ export default function Loading() {
   return (
     <AnimatePresence>
       {isVisible && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden select-none bg-black">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden select-none bg-transparent">
           
           {/* LEFT WEAVING CURTAIN PANEL (Slides Left on Exit) */}
           <motion.div
