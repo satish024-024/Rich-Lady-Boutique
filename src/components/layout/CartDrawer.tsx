@@ -22,7 +22,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     if (savedCart) {
       const items = JSON.parse(savedCart);
       setCartItems(items);
-      const total = items.reduce((acc: number, item: Product) => acc + item.price, 0);
+      const total = items.reduce((acc: number, item: any) => acc + (item.price * (item.quantity || 1)), 0);
       setTotalPrice(total);
     } else {
       setCartItems([]);
@@ -48,15 +48,39 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
     return () => window.removeEventListener("cart-updated", loadCart);
   }, []);
 
-  const removeFromCart = (id: string, name: string) => {
-    const updated = cartItems.filter((item) => item.id !== id);
+  const removeFromCart = (id: string, selectedSize: string, name: string) => {
+    const updated = cartItems.filter((item) => !(item.id === id && (item as any).selectedSize === selectedSize));
     localStorage.setItem("rich-lady-cart", JSON.stringify(updated));
     setCartItems(updated);
-    setTotalPrice(updated.reduce((acc, item) => acc + item.price, 0));
+    setTotalPrice(updated.reduce((acc, item: any) => acc + (item.price * (item.quantity || 1)), 0));
     
     // Dispatch custom event to notify Header
     window.dispatchEvent(new Event("cart-updated"));
-    toast.success(`${name} removed from cart`);
+    toast.success(`${name} (${selectedSize ? `Size: ${selectedSize}` : ""}) removed from cart`);
+  };
+
+  const updateCartItemQuantity = (index: number, newQty: number) => {
+    const item = cartItems[index];
+    if (!item) return;
+
+    let updated: Product[];
+    if (newQty < 1) {
+      updated = cartItems.filter((_, idx) => idx !== index);
+      toast.success(`${item.name} removed from bag`);
+    } else {
+      const maxAvailable = item.stock !== undefined ? item.stock : 10;
+      if (newQty > maxAvailable) {
+        toast.error(`Only ${maxAvailable} items available in stock.`);
+        return;
+      }
+      updated = [...cartItems];
+      (updated[index] as any).quantity = newQty;
+    }
+
+    localStorage.setItem("rich-lady-cart", JSON.stringify(updated));
+    setCartItems(updated);
+    setTotalPrice(updated.reduce((acc, it: any) => acc + (it.price * (it.quantity || 1)), 0));
+    window.dispatchEvent(new Event("cart-updated"));
   };
 
   const handleCheckout = () => {
@@ -135,13 +159,42 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                             </>
                           )}
                         </div>
+                        
+                        {/* Quantity controls in drawer */}
+                        <div className="flex items-center gap-2 mt-2">
+                          <div className="flex items-center border border-border-accent/30 bg-[#FFFDF9]/60 rounded-xs overflow-hidden h-7">
+                            <button
+                              onClick={() => updateCartItemQuantity(idx, ((item as any).quantity || 1) - 1)}
+                              className="w-7 h-full flex items-center justify-center text-xs font-bold text-secondary-text hover:text-primary-text transition-colors cursor-pointer"
+                              aria-label="Decrease quantity"
+                            >
+                              -
+                            </button>
+                            <span className="w-8 text-center text-[10px] font-bold text-primary-text select-none">
+                              {(item as any).quantity || 1}
+                            </span>
+                            <button
+                              onClick={() => updateCartItemQuantity(idx, ((item as any).quantity || 1) + 1)}
+                              className="w-7 h-full flex items-center justify-center text-xs font-bold text-secondary-text hover:text-primary-text transition-colors cursor-pointer"
+                              aria-label="Increase quantity"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+
                         <span className="text-xs font-sans text-chocolate font-medium mt-2">
-                          ₹{item.price.toLocaleString("en-IN")}
+                          ₹{(item.price * ((item as any).quantity || 1)).toLocaleString("en-IN")}
+                          {((item as any).quantity || 1) > 1 && (
+                            <span className="text-[9px] text-secondary-text/60 font-light ml-1.5">
+                              (₹{item.price.toLocaleString("en-IN")} each)
+                            </span>
+                          )}
                         </span>
                       </div>
 
                       <button
-                        onClick={() => removeFromCart(item.id, item.name)}
+                        onClick={() => removeFromCart(item.id, (item as any).selectedSize || "", item.name)}
                         className="text-secondary-text/40 hover:text-red-700 transition-colors p-1.5 self-center"
                         aria-label="Remove item"
                       >

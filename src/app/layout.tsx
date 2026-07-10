@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/providers/ThemeProvider";
 import { SmoothScrollProvider } from "@/providers/SmoothScrollProvider";
 import { MotionProvider } from "@/providers/MotionProvider";
 import { FutureToastProvider } from "@/providers/FutureToastProvider";
+import { AuthProvider } from "@/providers/AuthProvider";
 
 const cormorantGaramond = Cormorant_Garamond({
   variable: "--font-cormorant-garamond",
@@ -74,7 +75,9 @@ export default function RootLayout({
           <SmoothScrollProvider>
             <MotionProvider>
               <FutureToastProvider>
-                {children}
+                <AuthProvider>
+                  {children}
+                </AuthProvider>
               </FutureToastProvider>
             </MotionProvider>
           </SmoothScrollProvider>

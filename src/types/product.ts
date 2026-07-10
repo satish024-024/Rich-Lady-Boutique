@@ -14,4 +14,5 @@ export interface Product {
   sizes?: string[];
   collectionTag?: string;
   hoverImageUrl?: string;
+  stock?: number;
 }

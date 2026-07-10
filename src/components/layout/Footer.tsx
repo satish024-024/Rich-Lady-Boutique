@@ -5,8 +5,11 @@ import Link from "next/link";
 import { MessageCircle, Phone, Mail, MapPin, Clock, Instagram, Facebook, Compass } from "lucide-react";
 import { brandInfo } from "@/data/brand";
 import { toast } from "sonner";
+import { useAuth } from "@/providers/AuthProvider";
+import { isAdmin } from "@/utils/auth";
 
 export function Footer() {
+  const { user } = useAuth();
   const handleSocialClick = (platform: string) => {
     toast.info(`Opening our official ${platform} page...`);
   };
@@ -101,9 +104,11 @@ export function Footer() {
                   {col}
                 </button>
               ))}
-              <Link href="/admin" className="text-left hover:text-muted-gold transition-colors font-medium text-muted-gold border-t border-primary-bg/10 pt-2 mt-1">
-                Admin Panel Control
-              </Link>
+              {isAdmin(user) && (
+                <Link href="/admin" className="text-left hover:text-muted-gold transition-colors font-medium text-muted-gold border-t border-primary-bg/10 pt-2 mt-1">
+                  Admin Panel Control
+                </Link>
+              )}
             </div>
           </div>
 

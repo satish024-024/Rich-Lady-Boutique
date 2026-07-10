@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Heart, ShoppingBag, MessageCircle, Share2, Download, FileText, CheckCircle, HelpCircle, CreditCard, X, ChevronDown, ChevronUp, Shield, Truck, Facebook, Twitter, Compass } from "lucide-react";
-import { getLocalProducts } from "@/utils/db";
+import { getProducts } from "@/utils/db";
 import { Product } from "@/types/product";
 import { FadeIn } from "@/components/motion/FadeIn";
 import { toast } from "sonner";
@@ -30,38 +30,41 @@ export default function ProductDetailPage({
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [activeBoutiqueModal, setActiveBoutiqueModal] = useState<"none" | "lookbook" | "care" | "sizing">("none");
   const [openSection, setOpenSection] = useState<string | null>("details"); // Accordion state
+  const [quantity, setQuantity] = useState(1);
 
   useEffect(() => {
-    const products = getLocalProducts();
-    const found = products.find((p) => p.id === productId);
+    setQuantity(1);
+    getProducts().then((products) => {
+      const found = products.find((p) => p.id === productId);
 
-    if (found) {
-      setProduct(found);
-      
-      // Gallery (vertical stack list on the left side)
-      const related = products.filter((p) => p.category === found.category && p.id !== found.id);
-      const galleryImages = [
-        found.imageUrl,
-        ...related.map((p) => p.imageUrl),
-        "/images/featured_everyday.jpg",
-        "/images/festival_spotlight.jpg"
-      ].slice(0, 4);
-      setGallery(galleryImages);
+      if (found) {
+        setProduct(found);
+        
+        // Gallery (vertical stack list on the left side)
+        const related = products.filter((p) => p.category === found.category && p.id !== found.id);
+        const galleryImages = [
+          found.imageUrl,
+          ...related.map((p) => p.imageUrl),
+          "/images/featured_everyday.jpg",
+          "/images/festival_spotlight.jpg"
+        ].slice(0, 4);
+        setGallery(galleryImages);
 
-      // Recommendations
-      const recs = products.filter((p) => p.id !== found.id).slice(0, 4);
-      setRecommendations(recs);
+        // Recommendations
+        const recs = products.filter((p) => p.id !== found.id).slice(0, 4);
+        setRecommendations(recs);
 
-      // Wishlist check
-      const savedWishlist = localStorage.getItem("rich-lady-wishlist");
-      if (savedWishlist) {
-        const items: Product[] = JSON.parse(savedWishlist);
-        setIsLiked(items.some((item) => item.id === found.id));
+        // Wishlist check
+        const savedWishlist = localStorage.getItem("rich-lady-wishlist");
+        if (savedWishlist) {
+          const items: Product[] = JSON.parse(savedWishlist);
+          setIsLiked(items.some((item) => item.id === found.id));
+        }
+      } else {
+        toast.error("Product not found");
+        router.push("/catalog");
       }
-    } else {
-      toast.error("Product not found");
-      router.push("/catalog");
-    }
+    });
   }, [productId, router]);
 
   const toggleWishlist = () => {
@@ -96,19 +99,30 @@ export default function ProductDetailPage({
     const savedCart = localStorage.getItem("rich-lady-cart");
     let currentCart: any[] = savedCart ? JSON.parse(savedCart) : [];
 
-    const exists = currentCart.some(item => item.id === product.id && item.selectedSize === selectedSize);
-    if (!exists) {
+    const existingIndex = currentCart.findIndex(item => item.id === product.id && item.selectedSize === selectedSize);
+    const existingQty = existingIndex > -1 ? (currentCart[existingIndex].quantity || 0) : 0;
+    const requestedQty = existingQty + quantity;
+    const maxAvailable = product.stock !== undefined ? product.stock : 10;
+
+    if (requestedQty > maxAvailable) {
+      toast.error(`Cannot add more items. Only ${maxAvailable} available in stock (you already have ${existingQty} in your bag).`);
+      return;
+    }
+
+    if (existingIndex > -1) {
+      currentCart[existingIndex].quantity = requestedQty;
+      toast.success(`Updated ${product.name} (Size: ${selectedSize}) quantity to ${requestedQty} in bag!`);
+    } else {
       const cartItem = {
         ...product,
-        selectedSize: selectedSize
+        selectedSize: selectedSize,
+        quantity: quantity
       };
-      const updated = [...currentCart, cartItem];
-      localStorage.setItem("rich-lady-cart", JSON.stringify(updated));
-      window.dispatchEvent(new Event("cart-updated"));
-      toast.success(`${product.name} (Size: ${selectedSize}) added to bag!`);
-    } else {
-      toast.info(`${product.name} in Size: ${selectedSize} is already in your bag`);
+      currentCart.push(cartItem);
+      toast.success(`${product.name} (Size: ${selectedSize}, Qty: ${quantity}) added to bag!`);
     }
+    localStorage.setItem("rich-lady-cart", JSON.stringify(currentCart));
+    window.dispatchEvent(new Event("cart-updated"));
   };
 
   const handleBuyNow = () => {
@@ -307,11 +321,15 @@ export default function ProductDetailPage({
           {/* RIGHT COLUMN (Col Span 5): Overhauled Buying Card matching the shared mockup */}
           <div className="lg:col-span-5 flex flex-col items-start gap-5">
             
-            {/* Top row: SKU and dispatch scheduler */}
+            {/* Top row: SKU, dispatch scheduler, and inventory status */}
             <div className="flex items-center gap-2 text-[10px] tracking-wider text-secondary-text/75 font-semibold">
               <span>SKU: {productCode}</span>
               <span className="h-3 w-[1px] bg-secondary-text/20 mx-1" />
               <span>Ships in 24 Hours</span>
+              <span className="h-3 w-[1px] bg-secondary-text/20 mx-1" />
+              <span className={product.stock === 0 ? "text-red-700 font-bold" : "text-emerald-700 font-bold"}>
+                {product.stock === 0 ? "Out of Stock" : `In Stock (${product.stock} available)`}
+              </span>
             </div>
 
             {/* Product Title */}
@@ -387,17 +405,48 @@ export default function ProductDetailPage({
               </div>
             </div>
 
+            {/* Quantity Selector Block */}
+            <div className="w-full flex flex-col gap-3 mt-4">
+              <span className="text-sm font-sans font-semibold text-primary-text">Quantity</span>
+              <div className="flex items-center">
+                <div className="flex items-center border border-border-accent/40 bg-[#FFFDF9]/65 rounded-sm overflow-hidden h-10">
+                  <button
+                     onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
+                     disabled={quantity <= 1}
+                     className="w-10 h-full flex items-center justify-center text-sm font-bold text-secondary-text hover:text-primary-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    -
+                  </button>
+                  <span className="w-12 text-center text-xs font-bold text-primary-text select-none">
+                    {quantity}
+                  </span>
+                  <button
+                     onClick={() => setQuantity(prev => Math.min(product.stock !== undefined ? product.stock : 10, prev + 1))}
+                     disabled={quantity >= (product.stock !== undefined ? product.stock : 10)}
+                     className="w-10 h-full flex items-center justify-center text-sm font-bold text-secondary-text hover:text-primary-text disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Primary CTAs (Buy and Wishlist Side by Side) */}
             <div className="w-full flex flex-col gap-3 mt-4">
               
               <div className="flex gap-3 w-full items-stretch">
                 {/* Add to Shopping Bag */}
                 <button
-                  onClick={handleAddToCart}
-                  className="flex-1 bg-forest-green hover:bg-[#1a2b24] text-primary-bg py-4 text-[10px] font-sans font-bold tracking-widest uppercase border border-muted-gold/20 hover:border-muted-gold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
+                  onClick={product.stock === 0 ? undefined : handleAddToCart}
+                  disabled={product.stock === 0}
+                  className={`flex-1 py-4 text-[10px] font-sans font-bold tracking-widest uppercase transition-all duration-300 flex items-center justify-center gap-2 shadow-sm border ${
+                    product.stock === 0
+                      ? "bg-secondary-bg text-secondary-text border-border-accent/40 cursor-not-allowed opacity-60"
+                      : "bg-forest-green hover:bg-[#1a2b24] text-primary-bg border-muted-gold/20 hover:border-muted-gold cursor-pointer"
+                  }`}
                 >
-                  Add to Shopping Bag
-                  <span className="text-[12px]">→</span>
+                  {product.stock === 0 ? "Out of Stock" : "Add to Shopping Bag"}
+                  {product.stock !== 0 && <span className="text-[12px]">→</span>}
                 </button>
 
                 {/* Wishlist Button */}
@@ -413,7 +462,12 @@ export default function ProductDetailPage({
 
               {/* Pricing overview under CTAs */}
               <div className="text-[10px] text-secondary-text/80 font-sans font-medium mt-1">
-                You Pay: <b className="text-primary-text">₹{product.price.toLocaleString("en-IN")}</b> (Incl. Services)
+                You Pay: <b className="text-primary-text">₹{(product.price * quantity).toLocaleString("en-IN")}</b> (Incl. Services)
+                {quantity > 1 && (
+                  <span className="text-[9px] text-secondary-text/60 font-light ml-1.5">
+                    (₹{product.price.toLocaleString("en-IN")} each)
+                  </span>
+                )}
               </div>
 
               {/* Shipping policy helper */}
@@ -431,11 +485,16 @@ export default function ProductDetailPage({
 
               {/* Secure Checkout option */}
               <button
-                onClick={handleBuyNow}
-                className="w-full bg-[#0b162f] hover:bg-[#152449] text-white py-3.5 text-[9px] font-sans font-bold tracking-widest uppercase rounded-full border border-blue-500/25 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-md mt-2"
+                onClick={product.stock === 0 ? undefined : handleBuyNow}
+                disabled={product.stock === 0}
+                className={`w-full py-3.5 text-[9px] font-sans font-bold tracking-widest uppercase rounded-full border transition-all duration-300 flex items-center justify-center gap-2 shadow-md mt-2 ${
+                  product.stock === 0
+                    ? "bg-secondary-bg/50 text-secondary-text border-border-accent/40 cursor-not-allowed opacity-60"
+                    : "bg-[#0b162f] hover:bg-[#152449] text-white border-blue-500/25 cursor-pointer"
+                }`}
               >
                 <CreditCard className="w-3.5 h-3.5 text-blue-400" />
-                Buy Now (Razorpay Secure Checkout)
+                {product.stock === 0 ? "Sold Out" : "Buy Now (Razorpay Secure Checkout)"}
               </button>
             </div>
 
@@ -588,8 +647,9 @@ export default function ProductDetailPage({
         isOpen={isCheckoutOpen}
         onClose={() => setIsCheckoutOpen(false)}
         product={product}
-        totalAmount={product.price}
+        totalAmount={product.price * quantity}
         isCartCheckout={false}
+        quantity={quantity}
       />
 
       {/* RENDER MODAL 2: Lookbook Catalog Overlay */}

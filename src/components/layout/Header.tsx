@@ -3,11 +3,14 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, Heart, ShoppingBag, Menu, X, ArrowRight, MessageCircle, Phone, Clock, ChevronDown } from "lucide-react";
+import { Search, Heart, ShoppingBag, Menu, X, ArrowRight, MessageCircle, Phone, Clock, ChevronDown, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { brandInfo } from "@/data/brand";
 import { navigationItems } from "@/data/navigation";
 import { toast } from "sonner";
+import { useAuth } from "@/providers/AuthProvider";
+import { AuthModal } from "@/components/auth/AuthModal";
+import { isAdmin } from "@/utils/auth";
 
 interface HeaderProps {
   onSearchClick: () => void;
@@ -25,6 +28,11 @@ export function Header({ onSearchClick, onCartClick, onWishlistClick }: HeaderPr
   // Cart & Wishlist counters
   const [wishlistCount, setWishlistCount] = useState(0);
   const [cartCount, setCartCount] = useState(0);
+
+  // Auth states
+  const { user, logout } = useAuth();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -205,6 +213,63 @@ export function Header({ onSearchClick, onCartClick, onWishlistClick }: HeaderPr
                 )}
               </button>
 
+              {/* Profile Account */}
+              <div className="relative flex items-center">
+                {user ? (
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                      className="w-7 h-7 rounded-full bg-forest-green border border-muted-gold/45 text-primary-bg flex items-center justify-center text-[10px] font-sans font-bold uppercase tracking-wider cursor-pointer hover:border-muted-gold transition-colors"
+                      aria-label="User Profile"
+                    >
+                      {user.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                    </button>
+                    {isProfileDropdownOpen && (
+                      <div className="absolute right-0 mt-2.5 w-48 bg-card border border-border-accent/40 rounded-xl shadow-luxury py-2 z-50 text-[11px] font-sans">
+                        <div className="px-4 py-2 border-b border-border-accent/25 text-secondary-text font-light">
+                          <p className="font-serif text-xs text-primary-text font-bold leading-normal truncate">{user.name}</p>
+                          <p className="text-[9px] truncate mt-0.5">{user.phone}</p>
+                        </div>
+                        <Link
+                          href="/orders"
+                          className="block w-full text-left px-4 py-2.5 text-secondary-text hover:text-primary-text hover:bg-secondary-bg transition-colors"
+                          onClick={() => setIsProfileDropdownOpen(false)}
+                        >
+                          My Orders &amp; Tracking
+                        </Link>
+                        {isAdmin(user) && (
+                          <Link
+                            href="/admin"
+                            className="block w-full text-left px-4 py-2.5 text-secondary-text hover:text-primary-text hover:bg-secondary-bg transition-colors"
+                            onClick={() => setIsProfileDropdownOpen(false)}
+                          >
+                            Boutique Admin Panel
+                          </Link>
+                        )}
+                        <button
+                          onClick={() => {
+                            logout();
+                            setIsProfileDropdownOpen(false);
+                            toast.success("Logged out successfully.");
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-red-700 hover:bg-red-50/50 transition-colors cursor-pointer"
+                        >
+                          Log Out
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="hover:text-muted-gold transition-colors p-1.5 cursor-pointer text-primary-text"
+                    aria-label="Account Login"
+                  >
+                    <User className="w-4.5 h-4.5" />
+                  </button>
+                )}
+              </div>
+
               {/* WhatsApp Button */}
               <a
                 href={brandInfo.whatsappUrl}
@@ -271,6 +336,40 @@ export function Header({ onSearchClick, onCartClick, onWishlistClick }: HeaderPr
 
                 {/* Mobile Links */}
                 <div className="flex flex-col gap-5">
+                  {user && (
+                    <div className="border-b border-border-accent/40 pb-4 text-left">
+                      <p className="font-serif text-sm text-primary-text font-bold leading-normal">{user.name}</p>
+                      <p className="text-[9px] text-secondary-text mt-0.5">{user.email}</p>
+                      <div className="mt-3 flex flex-col gap-2">
+                        <Link
+                          href="/orders"
+                          onClick={() => setIsMobileMenuOpen(false)}
+                          className="text-[10px] font-sans uppercase font-bold tracking-widest text-forest-green hover:underline"
+                        >
+                          My Orders &amp; Tracking &rarr;
+                        </Link>
+                        {isAdmin(user) && (
+                          <Link
+                            href="/admin"
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="text-[10px] font-sans uppercase font-bold tracking-widest text-forest-green hover:underline"
+                          >
+                            Boutique Admin Panel &rarr;
+                          </Link>
+                        )}
+                        <button
+                          onClick={() => {
+                            logout();
+                            setIsMobileMenuOpen(false);
+                            toast.success("Logged out successfully.");
+                          }}
+                          className="text-left text-[10px] font-sans uppercase font-bold tracking-widest text-red-700 hover:underline cursor-pointer"
+                        >
+                          Log Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {navigationItems.map((item) => (
                     <div key={item.label} className="border-b border-border-accent/40 pb-2">
                       <Link
@@ -319,6 +418,11 @@ export function Header({ onSearchClick, onCartClick, onWishlistClick }: HeaderPr
           </>
         )}
       </AnimatePresence>
+
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+      />
     </>
   );
 }

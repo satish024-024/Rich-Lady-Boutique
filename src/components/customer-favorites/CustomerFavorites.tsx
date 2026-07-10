@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { getLocalProducts } from "@/utils/db";
+import { getProducts } from "@/utils/db";
 import { Product } from "@/types/product";
 import { ProductCard } from "@/components/shared/ProductCard";
 import { FadeIn } from "@/components/motion/FadeIn";
@@ -13,8 +13,9 @@ export function CustomerFavorites() {
 
   useEffect(() => {
     // Select top 6 products as customer favorites
-    const all = getLocalProducts();
-    setProducts(all.slice(0, 6));
+    getProducts().then((all) => {
+      setProducts(all.slice(0, 6));
+    });
   }, []);
 
   const scrollLeft = () => {

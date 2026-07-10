@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { getLocalProducts } from "@/utils/db";
+import { getProducts } from "@/utils/db";
 import { Product } from "@/types/product";
 import { ProductCard } from "@/components/shared/ProductCard";
 import { FadeIn } from "@/components/motion/FadeIn";
@@ -12,8 +12,9 @@ export function RecentlyAdded() {
 
   useEffect(() => {
     // Slice the first 4 items as "Recently Added"
-    const all = getLocalProducts();
-    setProducts(all.slice(2, 6)); // slice a distinct set of products
+    getProducts().then((all) => {
+      setProducts(all.slice(2, 6)); // slice a distinct set of products
+    });
   }, []);
 
   return (

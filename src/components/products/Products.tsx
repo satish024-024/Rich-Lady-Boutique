@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { getLocalProducts } from "@/utils/db";
+import { getProducts } from "@/utils/db";
 import { Product } from "@/types/product";
 import { ProductCard } from "@/components/shared/ProductCard";
 import { FadeIn } from "@/components/motion/FadeIn";
@@ -12,9 +12,9 @@ export function Products() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const all = getLocalProducts();
-    // Slice a distinct set of products as new arrivals
-    setProducts(all.slice(4, 10));
+    getProducts().then((all) => {
+      setProducts(all.slice(4, 10));
+    });
   }, []);
 
   const scrollLeft = () => {

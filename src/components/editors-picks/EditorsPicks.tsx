@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
-import { getLocalProducts } from "@/utils/db";
+import { getProducts } from "@/utils/db";
 import { Product } from "@/types/product";
 import { FadeIn } from "@/components/motion/FadeIn";
 
@@ -11,9 +11,10 @@ export function EditorsPicks() {
   const [products, setProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    const all = getLocalProducts();
-    // Select 3 unique products for editor's picks
-    setProducts(all.slice(1, 4));
+    getProducts().then((all) => {
+      // Select 3 unique products for editor's picks
+      setProducts(all.slice(1, 4));
+    });
   }, []);
 
   if (products.length < 3) return null;

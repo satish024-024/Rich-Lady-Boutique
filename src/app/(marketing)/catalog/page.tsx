@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Heart, ShoppingBag, Search, Sparkles, Grid, List } from "lucide-react";
-import { getLocalProducts } from "@/utils/db";
+import { getProducts } from "@/utils/db";
 import { Product } from "@/types/product";
 import { FadeIn } from "@/components/motion/FadeIn";
 import { toast } from "sonner";
@@ -20,6 +20,9 @@ function CatalogContent() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("newest");
   const [wishlist, setWishlist] = useState<string[]>([]);
+  const [maxPrice, setMaxPrice] = useState(50000);
+  const [minRating, setMinRating] = useState(0);
+  const [inStockOnly, setInStockOnly] = useState(false);
 
   // Category filters including special ones
   const categories = [
@@ -65,7 +68,7 @@ function CatalogContent() {
   };
 
   useEffect(() => {
-    let prods = getLocalProducts();
+    let prods = products;
 
     // Search query filter
     if (searchQuery.trim() !== "") {
@@ -85,6 +88,19 @@ function CatalogContent() {
       prods = prods.filter((p) => p.category.toLowerCase() === activeCategory.toLowerCase());
     }
 
+    // Price Filter
+    prods = prods.filter((p) => p.price <= maxPrice);
+
+    // Rating Filter
+    if (minRating > 0) {
+      prods = prods.filter((p) => (p.rating || 0) >= minRating);
+    }
+
+    // Availability Filter
+    if (inStockOnly) {
+      prods = prods.filter((p) => p.stock !== 0);
+    }
+
     // Sort logic
     if (sortBy === "price-low") {
       prods = [...prods].sort((a, b) => a.price - b.price);
@@ -93,10 +109,10 @@ function CatalogContent() {
     }
 
     setFilteredProducts(prods);
-  }, [searchQuery, activeCategory, sortBy, products]);
+  }, [searchQuery, activeCategory, sortBy, products, maxPrice, minRating, inStockOnly]);
 
   useEffect(() => {
-    setProducts(getLocalProducts());
+    getProducts().then(setProducts);
 
     const savedWishlist = localStorage.getItem("rich-lady-wishlist");
     if (savedWishlist) {
@@ -105,7 +121,7 @@ function CatalogContent() {
     }
 
     const handleUpdate = () => {
-      setProducts(getLocalProducts());
+      getProducts().then(setProducts);
     };
     window.addEventListener("products-updated", handleUpdate);
     return () => window.removeEventListener("products-updated", handleUpdate);
@@ -276,177 +292,280 @@ function CatalogContent() {
           </div>
         </FadeIn>
 
-        {/* Catalog Grid/List Render */}
-        {filteredProducts.length > 0 ? (
-          viewMode === "grid" ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 xl:gap-8 max-w-7xl mx-auto">
-              {filteredProducts.map((prod, idx) => {
-                const isLiked = wishlist.includes(prod.id);
-                return (
-                  <FadeIn
-                    key={prod.id}
-                    delay={idx * 0.04}
-                    duration="slow"
-                    className="flex flex-col items-start group relative"
-                  >
-                    <Link href={`/product/${prod.id}`} className="w-full flex flex-col items-start cursor-pointer">
-                      {/* Image Frame */}
-                      <div className="w-full aspect-[4/5] bg-card overflow-hidden border border-border-accent/30 relative group shadow-xs hover:shadow-md transition-all duration-medium rounded-xs">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={prod.imageUrl}
-                          alt={prod.name}
-                          className="w-full h-full object-cover transition-transform duration-slow group-hover:scale-[1.02]"
-                        />
+        {/* Catalog Grid/List Render wrapped in sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* LEFT COLUMN: Sidebar Filters (Col Span 3) */}
+          <div className="lg:col-span-3 bg-card border border-border-accent/30 rounded-3xl p-6 flex flex-col gap-6 text-left lg:sticky lg:top-28 shadow-xs">
+            <h3 className="font-serif text-xs text-primary-text font-bold uppercase tracking-wider border-b border-border-accent/25 pb-3">
+              Filter Collection
+            </h3>
 
-                        {/* Sale Tag */}
-                        {prod.isSale && (
-                          <span className="absolute top-4 left-4 px-2 py-1 bg-chocolate text-primary-bg text-[8px] uppercase tracking-widest font-bold rounded-xs shadow-xs select-none z-10">
-                            Sale
-                          </span>
-                        )}
-                        
-                        {/* Wishlist toggle */}
-                        <button
-                          onClick={(e) => toggleWishlist(prod, e)}
-                          className="absolute top-4 right-4 p-2 bg-primary-bg/70 hover:bg-primary-bg backdrop-blur-xs rounded-full shadow-xs text-primary-text hover:text-red-700 transition-colors duration-medium cursor-pointer z-10"
-                          aria-label={isLiked ? "Remove from wishlist" : "Add to wishlist"}
-                        >
-                          <Heart
-                            className={`w-4 h-4 transition-colors duration-medium ${
-                              isLiked ? "fill-red-700 text-red-700" : "text-primary-text"
-                            }`}
-                          />
-                        </button>
-
-                        {/* Add to bag hover CTA */}
-                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-chocolate/40 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-medium flex justify-center">
-                          <button
-                            onClick={(e) => handleAddToCart(prod, e)}
-                            className="bg-primary-bg text-primary-text hover:bg-forest-green hover:text-primary-bg px-4 py-2 text-[8px] font-sans font-semibold tracking-widest uppercase rounded-xs border border-border-accent hover:border-forest-green transition-all duration-medium flex items-center gap-1.5 cursor-pointer shadow-sm"
-                          >
-                            <ShoppingBag className="w-3 h-3" />
-                            Add to Bag
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Info details */}
-                      <div className="flex justify-between items-start w-full mt-4">
-                        <div>
-                          <h3 className="font-serif text-xs md:text-sm text-primary-text font-normal mb-0.5 group-hover:text-muted-gold transition-colors duration-medium">
-                            {prod.name}
-                          </h3>
-                          <span className="text-[9px] uppercase tracking-wider font-semibold text-secondary-text">
-                            {prod.category}
-                          </span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <span className="text-xs font-sans text-chocolate font-semibold">
-                            ₹{prod.price.toLocaleString("en-IN")}
-                          </span>
-                          {prod.isSale && prod.originalPrice && (
-                            <span className="text-[10px] font-sans text-secondary-text/60 line-through mt-0.5">
-                              ₹{prod.originalPrice.toLocaleString("en-IN")}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </Link>
-                  </FadeIn>
-                );
-              })}
+            {/* Price Range Filter */}
+            <div className="flex flex-col gap-3">
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-secondary-text">
+                Max Price: ₹{maxPrice.toLocaleString("en-IN")}
+              </span>
+              <input
+                type="range"
+                min="0"
+                max="50000"
+                step="500"
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(Number(e.target.value))}
+                className="w-full accent-forest-green cursor-pointer h-1 bg-border-accent/40 rounded-lg appearance-none"
+              />
+              <div className="flex justify-between text-[9px] text-secondary-text font-medium -mt-1">
+                <span>₹0</span>
+                <span>₹50,000</span>
+              </div>
             </div>
-          ) : (
-            /* List Layout Render */
-            <div className="flex flex-col gap-4">
-              {filteredProducts.map((prod, idx) => {
-                const isLiked = wishlist.includes(prod.id);
-                return (
-                  <FadeIn
-                    key={prod.id}
-                    delay={idx * 0.04}
-                    className="w-full bg-card border border-border-accent/30 p-4 rounded-md flex flex-row items-center justify-between gap-6 hover:border-muted-gold/40 transition-colors"
-                  >
-                    <Link href={`/product/${prod.id}`} className="flex items-center gap-4 flex-1">
-                      <div className="w-20 h-24 bg-primary-bg border border-border-accent/40 rounded-xs overflow-hidden relative flex-shrink-0">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={prod.imageUrl}
-                          alt={prod.name}
-                          className="w-full h-full object-cover"
-                        />
-                        {/* Sale Tag */}
-                        {prod.isSale && (
-                          <span className="absolute top-2 left-2 px-1.5 py-0.5 bg-chocolate text-primary-bg text-[6px] uppercase tracking-widest font-bold rounded-xs shadow-xs select-none">
-                            Sale
-                          </span>
-                        )}
-                      </div>
-                      
-                      <div className="flex flex-col">
-                        <span className="text-[8px] uppercase tracking-widest text-muted-gold font-bold font-sans">{prod.category}</span>
-                        <h3 className="font-serif text-sm md:text-base text-primary-text font-normal mt-0.5 hover:text-muted-gold transition-colors">
-                          {prod.name}
-                        </h3>
-                        <p className="text-[10px] text-secondary-text/80 font-light mt-1 max-w-xl line-clamp-1">
-                          {prod.description}
-                        </p>
-                      </div>
-                    </Link>
 
-                    <div className="flex items-center gap-6">
-                      <div className="flex flex-col items-end">
-                        <span className="text-xs md:text-sm font-sans text-chocolate font-semibold">
-                          ₹{prod.price.toLocaleString("en-IN")}
-                        </span>
-                        {prod.isSale && prod.originalPrice && (
-                          <span className="text-[10px] font-sans text-secondary-text/60 line-through mt-0.5">
-                            ₹{prod.originalPrice.toLocaleString("en-IN")}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button
-                          onClick={(e) => toggleWishlist(prod, e)}
-                          className="p-2 border border-border-accent/40 hover:border-red-700 hover:text-red-700 rounded-xs transition-colors cursor-pointer text-secondary-text"
-                          aria-label="Toggle wishlist"
-                        >
-                          <Heart className={`w-4 h-4 ${isLiked ? "fill-red-700 text-red-700" : ""}`} />
-                        </button>
-                        <button
-                          onClick={(e) => handleAddToCart(prod, e)}
-                          className="px-4 py-2 bg-forest-green hover:bg-[#1a2b24] text-primary-bg text-[9px] uppercase tracking-wider font-semibold rounded-xs border border-muted-gold/20 flex items-center gap-1"
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          Add
-                        </button>
-                      </div>
-                    </div>
-                  </FadeIn>
-                );
-              })}
+            {/* Rating Stars Filter */}
+            <div className="flex flex-col gap-3">
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-secondary-text">
+                Minimum Rating
+              </span>
+              <div className="flex flex-col gap-2 text-xs">
+                {[4, 3, 0].map((stars) => (
+                  <label key={stars} className="flex items-center gap-2 text-secondary-text cursor-pointer hover:text-primary-text">
+                    <input
+                      type="radio"
+                      name="rating-filter"
+                      checked={minRating === stars}
+                      onChange={() => setMinRating(stars)}
+                      className="accent-forest-green cursor-pointer"
+                    />
+                    <span>{stars === 0 ? "Show All Ratings" : `${stars} Stars & Above`}</span>
+                  </label>
+                ))}
+              </div>
             </div>
-          )
-        ) : (
-          <div className="text-center py-24 flex flex-col items-center">
-            <ShoppingBag className="w-16 h-16 text-border-accent/80 mb-6 stroke-[1.25]" />
-            <h3 className="font-serif text-xl text-primary-text italic mb-2">No designs match your criteria</h3>
-            <p className="text-xs text-secondary-text/70 max-w-[280px]">
-              Try searching for something else or reset the filter selection.
-            </p>
+
+            {/* Stock Availability Toggle */}
+            <div className="flex flex-col gap-3">
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-secondary-text">
+                Availability
+              </span>
+              <label className="flex items-center gap-2 text-xs text-secondary-text cursor-pointer hover:text-primary-text">
+                <input
+                  type="checkbox"
+                  checked={inStockOnly}
+                  onChange={(e) => setInStockOnly(e.target.checked)}
+                  className="accent-forest-green cursor-pointer rounded-xs"
+                />
+                <span>In Stock Designs Only</span>
+              </label>
+            </div>
+
+            {/* Reset Filters */}
             <button
               onClick={() => {
+                setMaxPrice(50000);
+                setMinRating(0);
+                setInStockOnly(false);
                 setActiveCategory("All Designs");
                 setSearchQuery("");
               }}
-              className="mt-6 px-6 py-2.5 bg-forest-green text-primary-bg text-[10px] uppercase tracking-widest font-semibold rounded-xs border border-muted-gold/20"
+              className="w-full py-2 bg-forest-green hover:bg-[#1a2b24] text-primary-bg text-[9px] font-sans font-semibold tracking-widest uppercase rounded-full transition-colors cursor-pointer border border-muted-gold/20"
             >
               Reset Filters
             </button>
           </div>
-        )}
+
+          {/* RIGHT COLUMN: Products Grid/List (Col Span 9) */}
+          <div className="lg:col-span-9">
+            {filteredProducts.length > 0 ? (
+              viewMode === "grid" ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 xl:gap-8">
+                  {filteredProducts.map((prod, idx) => {
+                    const isLiked = wishlist.includes(prod.id);
+                    return (
+                      <FadeIn
+                        key={prod.id}
+                        delay={idx * 0.04}
+                        duration="slow"
+                        className="flex flex-col items-start group relative"
+                      >
+                        <Link href={`/product/${prod.id}`} className="w-full flex flex-col items-start cursor-pointer">
+                          {/* Image Frame */}
+                          <div className="w-full aspect-[4/5] bg-card overflow-hidden border border-border-accent/30 relative group shadow-xs hover:shadow-md transition-all duration-medium rounded-xs">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={prod.imageUrl}
+                              alt={prod.name}
+                              className="w-full h-full object-cover transition-transform duration-slow group-hover:scale-[1.02]"
+                            />
+
+                            {/* Sold Out / Sale Tag */}
+                            {prod.stock === 0 ? (
+                              <span className="absolute top-4 left-4 px-2 py-1 bg-red-700 text-white text-[8px] uppercase tracking-widest font-bold rounded-xs shadow-xs select-none z-10">
+                                Sold Out
+                              </span>
+                            ) : prod.isSale ? (
+                              <span className="absolute top-4 left-4 px-2 py-1 bg-chocolate text-primary-bg text-[8px] uppercase tracking-widest font-bold rounded-xs shadow-xs select-none z-10">
+                                Sale
+                              </span>
+                            ) : null}
+                            
+                            {/* Wishlist toggle */}
+                            <button
+                              onClick={(e) => toggleWishlist(prod, e)}
+                              className="absolute top-4 right-4 p-2 bg-primary-bg/70 hover:bg-primary-bg backdrop-blur-xs rounded-full shadow-xs text-primary-text hover:text-red-700 transition-colors duration-medium cursor-pointer z-10"
+                              aria-label={isLiked ? "Remove from wishlist" : "Add to wishlist"}
+                            >
+                              <Heart
+                                className={`w-4 h-4 transition-colors duration-medium ${
+                                  isLiked ? "fill-red-700 text-red-700" : "text-primary-text"
+                                }`}
+                              />
+                            </button>
+
+                            {/* Add to bag hover CTA (only if in stock) */}
+                            {prod.stock !== 0 && (
+                              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-chocolate/40 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-medium flex justify-center">
+                                <button
+                                  onClick={(e) => handleAddToCart(prod, e)}
+                                  className="bg-primary-bg text-primary-text hover:bg-forest-green hover:text-primary-bg px-4 py-2 text-[8px] font-sans font-semibold tracking-widest uppercase rounded-xs border border-border-accent hover:border-forest-green transition-all duration-medium flex items-center gap-1.5 cursor-pointer shadow-sm"
+                                >
+                                  <ShoppingBag className="w-3 h-3" />
+                                  Add to Bag
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Info details */}
+                          <div className="flex justify-between items-start w-full mt-4">
+                            <div>
+                              <h3 className="font-serif text-xs md:text-sm text-primary-text font-normal mb-0.5 group-hover:text-muted-gold transition-colors duration-medium">
+                                {prod.name}
+                              </h3>
+                              <span className="text-[9px] uppercase tracking-wider font-semibold text-secondary-text">
+                                {prod.category}
+                              </span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="text-xs font-sans text-chocolate font-semibold">
+                                ₹{prod.price.toLocaleString("en-IN")}
+                              </span>
+                              {prod.isSale && prod.originalPrice && (
+                                <span className="text-[10px] font-sans text-secondary-text/60 line-through mt-0.5">
+                                  ₹{prod.originalPrice.toLocaleString("en-IN")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </Link>
+                      </FadeIn>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* List Layout Render */
+                <div className="flex flex-col gap-4">
+                  {filteredProducts.map((prod, idx) => {
+                    const isLiked = wishlist.includes(prod.id);
+                    return (
+                      <FadeIn
+                        key={prod.id}
+                        delay={idx * 0.04}
+                        className="w-full bg-card border border-border-accent/30 p-4 rounded-md flex flex-row items-center justify-between gap-6 hover:border-muted-gold/40 transition-colors"
+                      >
+                        <Link href={`/product/${prod.id}`} className="flex items-center gap-4 flex-1">
+                          <div className="w-20 h-24 bg-primary-bg border border-border-accent/40 rounded-xs overflow-hidden relative flex-shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={prod.imageUrl}
+                              alt={prod.name}
+                              className="w-full h-full object-cover"
+                            />
+                            {/* Sold Out / Sale Tag */}
+                            {prod.stock === 0 ? (
+                              <span className="absolute top-2 left-2 px-1.5 py-0.5 bg-red-700 text-white text-[6px] uppercase tracking-widest font-bold rounded-xs shadow-xs select-none">
+                                Sold Out
+                              </span>
+                            ) : prod.isSale ? (
+                              <span className="absolute top-2 left-2 px-1.5 py-0.5 bg-chocolate text-primary-bg text-[6px] uppercase tracking-widest font-bold rounded-xs shadow-xs select-none">
+                                Sale
+                              </span>
+                            ) : null}
+                          </div>
+                          
+                          <div className="flex flex-col">
+                            <span className="text-[8px] uppercase tracking-widest text-muted-gold font-bold font-sans">{prod.category}</span>
+                            <h3 className="font-serif text-sm md:text-base text-primary-text font-normal mt-0.5 hover:text-muted-gold transition-colors">
+                              {prod.name}
+                            </h3>
+                            <p className="text-[10px] text-secondary-text/80 font-light mt-1 max-w-xl line-clamp-1">
+                              {prod.description}
+                            </p>
+                          </div>
+                        </Link>
+
+                        <div className="flex items-center gap-6">
+                          <div className="flex flex-col items-end">
+                            <span className="text-xs md:text-sm font-sans text-chocolate font-semibold">
+                              ₹{prod.price.toLocaleString("en-IN")}
+                            </span>
+                            {prod.isSale && prod.originalPrice && (
+                              <span className="text-[10px] font-sans text-secondary-text/60 line-through mt-0.5">
+                                  ₹{prod.originalPrice.toLocaleString("en-IN")}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={(e) => toggleWishlist(prod, e)}
+                              className="p-2 border border-border-accent/40 hover:border-red-700 hover:text-red-700 rounded-xs transition-colors cursor-pointer text-secondary-text"
+                              aria-label="Toggle wishlist"
+                            >
+                              <Heart className={`w-4 h-4 ${isLiked ? "fill-red-700 text-red-700" : ""}`} />
+                            </button>
+                            <button
+                              onClick={(e) => handleAddToCart(prod, e)}
+                              disabled={prod.stock === 0}
+                              className={`px-4 py-2 text-[9px] uppercase tracking-wider font-semibold rounded-xs border flex items-center gap-1 cursor-pointer ${
+                                prod.stock === 0 
+                                  ? "bg-secondary-bg text-secondary-text border-border-accent/40 cursor-not-allowed opacity-60" 
+                                  : "bg-forest-green hover:bg-[#1a2b24] text-primary-bg border-muted-gold/20"
+                              }`}
+                            >
+                              <ShoppingBag className="w-3.5 h-3.5" />
+                              {prod.stock === 0 ? "Sold Out" : "Add"}
+                            </button>
+                          </div>
+                        </div>
+                      </FadeIn>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              <div className="text-center py-24 flex flex-col items-center">
+                <ShoppingBag className="w-16 h-16 text-border-accent/80 mb-6 stroke-[1.25]" strokeWidth={1.25} />
+                <h3 className="font-serif text-xl text-primary-text italic mb-2">No designs match your criteria</h3>
+                <p className="text-xs text-secondary-text/70 max-w-[280px]">
+                  Try searching for something else or reset the filter selection.
+                </p>
+                <button
+                  onClick={() => {
+                    setMaxPrice(50000);
+                    setMinRating(0);
+                    setInStockOnly(false);
+                    setActiveCategory("All Designs");
+                    setSearchQuery("");
+                  }}
+                  className="mt-6 px-6 py-2.5 bg-forest-green text-primary-bg text-[10px] uppercase tracking-widest font-semibold rounded-xs border border-muted-gold/20"
+                >
+                  Reset Filters
+                </button>
+              </div>
+            )}
+          </div>
+
+        </div>
 
       </div>
     </div>
