@@ -52,39 +52,20 @@ export default function UserOrdersPage() {
     }
 
     setIsLoading(true);
-    // Fetch orders matching customer_email or customer_phone
     const fetchOrders = async () => {
       try {
-        const queryFilter = [];
-        if (user.email) queryFilter.push(`customer_email.eq.${user.email}`);
-        if (user.phone) queryFilter.push(`customer_phone.eq.${user.phone}`);
+        const params = new URLSearchParams();
+        if (user.email) params.append("email", user.email);
+        if (user.phone) params.append("phone", user.phone);
 
-        if (queryFilter.length === 0) {
-          setOrders([]);
-          setIsLoading(false);
-          return;
+        const res = await fetch(`/api/orders?${params.toString()}`);
+        const data = await res.json();
+        
+        if (!res.ok || data.error) {
+          throw new Error(data.error || "Failed to fetch orders");
         }
 
-        const { data, error } = await supabase
-          .from("orders")
-          .select(`
-            *,
-            order_items (
-              id,
-              quantity,
-              price,
-              products (
-                name,
-                image_url,
-                category
-              )
-            )
-          `)
-          .or(queryFilter.join(","))
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        setOrders(data || []);
+        setOrders(data.orders || []);
       } catch (err: any) {
         console.error("Error fetching orders:", err);
         toast.error("Failed to load your orders");
