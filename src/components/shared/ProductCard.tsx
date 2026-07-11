@@ -65,7 +65,7 @@ export function ProductCard({ product, onQuickViewClick }: ProductCardProps) {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Visual Frame */}
-      <div className="w-full aspect-[4/5] bg-card overflow-hidden border border-border-accent/30 rounded-[1.5rem] relative shadow-xs group-hover:shadow-luxury group-hover:border-muted-gold/40 transition-all duration-500">
+      <div className="w-full aspect-[4/5] bg-card overflow-hidden border border-border-accent/30 rounded-2xl relative shadow-xs group-hover:shadow-luxury group-hover:border-muted-gold/45 transition-all duration-500">
         
         {/* Clickable Image Overlay */}
         <Link href={`/product/${product.id}`} className="absolute inset-0 z-0 cursor-pointer" aria-label={`View details for ${product.name}`} />

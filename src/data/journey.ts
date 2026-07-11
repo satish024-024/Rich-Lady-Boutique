@@ -10,24 +10,24 @@ export const journeyData: JourneyNode[] = [
     id: "step-1",
     stepNumber: "01",
     title: "Design & Curation",
-    description: "Sketching classical motifs and drafting heritage silhouettes inspired by traditional Indian art."
+    description: "Sketching timeless patterns and custom fits inspired by traditional art."
   },
   {
     id: "step-2",
     stepNumber: "02",
-    title: "Heritage Fabrics",
-    description: "Sourcing pure mulberry silks, organic cottons, and handloom fabrics from local master weavers."
+    title: "Heritage Weaving",
+    description: "Weaving pure silks and fine organic cottons sourced from local master artisans."
   },
   {
     id: "step-3",
     stepNumber: "03",
-    title: "Artisanal Craft",
-    description: "Intricate hand embroidery (Zardozi, Chikankari) and custom tailoring for the perfect drape."
+    title: "Handcrafted Art",
+    description: "Creating beautiful hand-stitched detailing and custom tailoring for a perfect drape."
   },
   {
     id: "step-4",
     stepNumber: "04",
-    title: "Conscious Packaging",
-    description: "Multi-point quality checks and packing in breathable, sustainable muslin bags for global delivery."
+    title: "Quality Delivery",
+    description: "Carefully inspecting each piece, packing it in soft cotton bags, and shipping it worldwide."
   }
 ];

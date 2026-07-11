@@ -1,32 +1,75 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { getProducts } from "@/utils/db";
 import { Product } from "@/types/product";
 import { ProductCard } from "@/components/shared/ProductCard";
 import { FadeIn } from "@/components/motion/FadeIn";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function CustomerFavorites() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full py-20 bg-secondary-bg flex items-center justify-center">
+          <span className="font-serif italic text-sm text-secondary-text animate-pulse">
+            Loading Favorites...
+          </span>
+        </div>
+      }
+    >
+      <CustomerFavoritesContent />
+    </Suspense>
+  );
+}
 
+function CustomerFavoritesContent() {
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string>("All");
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const searchParams = useSearchParams();
+  const categoryQuery = searchParams.get("category");
+
+  // Load all products (we select top 12 as potential favorites, then filter)
   useEffect(() => {
-    // Select top 6 products as customer favorites
     getProducts().then((all) => {
-      setProducts(all.slice(0, 6));
+      setAllProducts(all);
     });
   }, []);
 
+  // Sync category query parameter from URL
+  useEffect(() => {
+    if (categoryQuery) {
+      setActiveCategory(categoryQuery);
+    } else {
+      setActiveCategory("All");
+    }
+  }, [categoryQuery]);
+
+  // Filter products by category
+  useEffect(() => {
+    let filtered = allProducts;
+    if (activeCategory !== "All") {
+      filtered = allProducts.filter(
+        (p) => p.category.toLowerCase() === activeCategory.toLowerCase()
+      );
+    }
+    // Limit to top 6 customer favorites for clean display
+    setFilteredProducts(filtered.slice(0, 6));
+  }, [activeCategory, allProducts]);
+
   const scrollLeft = () => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: -340, behavior: "smooth" });
+      scrollContainerRef.current.scrollBy({ left: -320, behavior: "smooth" });
     }
   };
 
   const scrollRight = () => {
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: 340, behavior: "smooth" });
+      scrollContainerRef.current.scrollBy({ left: 320, behavior: "smooth" });
     }
   };
 
@@ -68,19 +111,48 @@ export function CustomerFavorites() {
           </FadeIn>
         </div>
 
-        {/* Horizontal Scroll list */}
-        <div
-          ref={scrollContainerRef}
-          className="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth pb-6 max-w-7xl mx-auto"
-        >
-          {products.map((prod) => (
-            <div
-              key={prod.id}
-              className="w-[280px] md:w-[300px] flex-shrink-0"
-            >
-              <ProductCard product={prod} />
-            </div>
-          ))}
+        {/* Horizontal Scroll list with exit/enter transitions */}
+        <div className="relative min-h-[350px]">
+          <AnimatePresence mode="popLayout">
+            {filteredProducts.length === 0 ? (
+              <motion.div
+                key="empty"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4 }}
+                className="w-full py-20 flex flex-col items-center justify-center text-center"
+              >
+                <span className="font-serif italic text-sm text-secondary-text/80">
+                  Crafting new favorites for this collection...
+                </span>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="grid"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                ref={scrollContainerRef}
+                className="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth pb-6 max-w-7xl mx-auto"
+              >
+                {filteredProducts.map((prod) => (
+                  <motion.div
+                    key={prod.id}
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.4 }}
+                    className="w-[280px] md:w-[300px] flex-shrink-0"
+                  >
+                    <ProductCard product={prod} />
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
       </div>

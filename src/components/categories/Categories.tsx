@@ -27,8 +27,8 @@ export function Categories() {
           </div>
         </FadeIn>
 
-        {/* Categories Grid - 8 Items layout */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4 max-w-7xl mx-auto">
+        {/* Curated Categories Grid - Balanced 6 Columns */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 max-w-6xl mx-auto justify-center">
           {categoriesData.map((cat, idx) => (
             <FadeIn
               key={cat.id}

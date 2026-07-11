@@ -35,16 +35,21 @@ export function Journey() {
             {journeyData.map((node) => (
               <div
                 key={node.id}
-                className="bg-card border border-border-accent/30 rounded-2xl p-6 md:p-8 shadow-xs hover:shadow-luxury hover:border-muted-gold/40 transition-all duration-medium flex flex-col items-start gap-5 relative group"
+                className="bg-card/70 backdrop-blur-md border border-border-accent/35 rounded-2xl p-6 md:p-8 shadow-xs hover:shadow-luxury hover:border-muted-gold/55 transition-all duration-500 flex flex-col items-start gap-4 relative overflow-hidden group min-h-[170px]"
               >
-                {/* step indicator circle */}
-                <div className="w-10 h-10 rounded-full bg-forest-green border border-muted-gold/20 flex items-center justify-center text-primary-bg text-xs font-sans font-bold shadow-xs group-hover:scale-105 transition-transform duration-medium">
+                {/* Huge Decorative Serif Background Number */}
+                <div className="absolute -top-4 -right-1 text-7xl md:text-8xl font-serif text-muted-gold/8 select-none pointer-events-none group-hover:text-muted-gold/15 group-hover:scale-105 transition-all duration-700 font-bold tracking-tighter">
                   {node.stepNumber}
                 </div>
 
+                {/* Elegant Micro Tag */}
+                <span className="text-[8px] font-sans font-bold tracking-[0.25em] text-muted-gold uppercase">
+                  Step {node.stepNumber}
+                </span>
+
                 {/* Info titles */}
-                <div className="flex flex-col gap-2">
-                  <h3 className="font-serif text-sm md:text-base text-primary-text font-normal tracking-wide group-hover:text-muted-gold transition-colors duration-medium">
+                <div className="flex flex-col gap-2 z-10">
+                  <h3 className="font-serif text-base md:text-lg text-primary-text font-medium tracking-wide group-hover:text-muted-gold transition-colors duration-medium">
                     {node.title}
                   </h3>
                   <p className="text-[11px] font-sans font-light text-secondary-text leading-relaxed">
