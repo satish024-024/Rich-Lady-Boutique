@@ -1,7 +1,6 @@
 import React from "react";
 import { Hero } from "@/components/hero/Hero";
 import { Budget } from "@/components/budget/Budget";
-import { RecentlyAdded } from "@/components/recently-added/RecentlyAdded";
 import { Categories } from "@/components/categories/Categories";
 import { CustomerFavorites } from "@/components/customer-favorites/CustomerFavorites";
 import { Featured } from "@/components/featured/Featured";
@@ -25,10 +24,7 @@ export default function HomePage() {
       {/* 2. Shop by Budget */}
       <Budget />
 
-      {/* 3. Recently Added (Just Arrived) */}
-      <RecentlyAdded />
-
-      {/* 4. Shop by Category */}
+      {/* 3. Shop by Category */}
       <Categories />
 
       {/* 5. Customer Favorites (Most Loved) */}
