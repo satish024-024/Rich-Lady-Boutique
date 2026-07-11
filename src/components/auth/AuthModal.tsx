@@ -29,6 +29,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [loginMethod, setLoginMethod] = useState<"phone" | "email">("phone");
   
   // Codes
   const [smsOtp, setSmsOtp] = useState("");
@@ -44,16 +46,55 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
 
-  const handleDevAdminBypass = () => {
-    const adminObj = {
-      name: "Boutique Owner (Admin)",
-      email: "admin@richladyboutique.com",
-      phone: "9030443306"
-    };
-    login(adminObj);
-    toast.success("Developer Bypass: Logged in as Administrator!");
-    onClose();
-    router.push("/admin");
+  const handleEmailLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      toast.error("Please enter email and password");
+      return;
+    }
+
+    const toastId = toast.loading("Verifying credentials...");
+    setIsLoading(true);
+
+    try {
+      // 1. Check for Admin Hardcoded Bypass
+      if (email.trim().toLowerCase() === "prakashkadali3723@gmail.com" && password === "1234567890") {
+        const adminUser = {
+          name: "Prakash Kadali",
+          email: "prakashkadali3723@gmail.com",
+          phone: "9030443306"
+        };
+        login(adminUser);
+        toast.success("Welcome back, Admin Prakash!", { id: toastId });
+        onClose();
+        router.push("/admin");
+        return;
+      }
+
+      // 2. Fallback to Firebase Email Authentication
+      const { signInWithEmailAndPassword } = await import("firebase/auth");
+      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const fbUser = userCredential.user;
+      
+      const userObj = {
+        name: fbUser.displayName || fbUser.email?.split("@")[0] || "User",
+        email: fbUser.email,
+        phone: fbUser.phoneNumber || ""
+      };
+      
+      login(userObj);
+      toast.success("Logged in successfully!", { id: toastId });
+      onClose();
+      
+      if (isAdmin(userObj)) {
+        router.push("/admin");
+      }
+    } catch (err: any) {
+      console.error("Email login error:", err);
+      toast.error(err.message || "Failed to login. Please check credentials.", { id: toastId });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Dynamically initialize invisible reCAPTCHA
@@ -448,58 +489,105 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     </button>
                   </div>
 
-                  {activeTab === "login" ? (
-                    /* LOGIN FORM */
-                    <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
-                      <div className="text-center mb-2">
-                        <p className="text-xs text-secondary-text font-light leading-relaxed">
-                          Enter your mobile number below. We will send you a secure SMS verification code.
-                        </p>
-                      </div>
-
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] uppercase tracking-wider font-semibold text-secondary-text">Mobile Number</label>
-                        <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-text font-bold text-xs">+91</span>
-                          <input
-                            required
-                            type="tel"
-                            maxLength={10}
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                            placeholder="Enter 10-digit number"
-                            className="w-full pl-14 pr-4 py-3.5 bg-card border border-border-accent/40 rounded-full text-xs text-primary-text focus:outline-none focus:border-muted-gold"
-                            disabled={isLoading}
-                          />
-                        </div>
-                      </div>
-
+                  {activeTab === "login" && (
+                    <div className="flex justify-end mt-1">
                       <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="w-full bg-forest-green hover:bg-[#1a2b24] text-primary-bg py-4 text-[10px] font-sans font-semibold tracking-widest uppercase rounded-full border border-muted-gold/20 hover:border-muted-gold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm mt-4 disabled:opacity-50"
+                        type="button"
+                        onClick={() => setLoginMethod(loginMethod === "phone" ? "email" : "phone")}
+                        className="text-[9px] uppercase tracking-wider font-sans font-bold text-muted-gold hover:text-forest-green transition-colors cursor-pointer"
                       >
-                        Send Secure OTP
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        {loginMethod === "phone" ? "Login with Email & Password" : "Login with Mobile Number"}
                       </button>
+                    </div>
+                  )}
 
-                      {/* Developer Admin Bypass Option */}
-                      {process.env.NODE_ENV === "development" && (
-                        <div className="mt-4 pt-4 border-t border-border-accent/15 flex flex-col items-center">
-                          <span className="text-[8px] uppercase tracking-widest text-muted-gold font-bold mb-2">
-                            Developer Tools
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleDevAdminBypass}
-                            className="w-full bg-card hover:bg-secondary-bg text-muted-gold py-3.5 text-[9px] font-sans font-bold tracking-widest uppercase rounded-full border border-border-accent/40 hover:border-muted-gold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                          >
-                            <ShieldCheck className="w-3.5 h-3.5" />
-                            Bypass to Admin Panel
-                          </button>
+                  {activeTab === "login" ? (
+                    loginMethod === "phone" ? (
+                      /* PHONE LOGIN FORM */
+                      <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
+                        <div className="text-center mb-2">
+                          <p className="text-xs text-secondary-text font-light leading-relaxed">
+                            Enter your mobile number below. We will send you a secure SMS verification code.
+                          </p>
                         </div>
-                      )}
-                    </form>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] uppercase tracking-wider font-semibold text-secondary-text">Mobile Number</label>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-text font-bold text-xs">+91</span>
+                            <input
+                              required
+                              type="tel"
+                              maxLength={10}
+                              value={phone}
+                              onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                              placeholder="Enter 10-digit number"
+                              className="w-full pl-14 pr-4 py-3.5 bg-card border border-border-accent/40 rounded-full text-xs text-primary-text focus:outline-none focus:border-muted-gold"
+                              disabled={isLoading}
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={isLoading}
+                          className="w-full bg-forest-green hover:bg-[#1a2b24] text-primary-bg py-4 text-[10px] font-sans font-semibold tracking-widest uppercase rounded-full border border-muted-gold/20 hover:border-muted-gold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm mt-4 disabled:opacity-50"
+                        >
+                          Send Secure OTP
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </form>
+                    ) : (
+                      /* EMAIL LOGIN FORM */
+                      <form onSubmit={handleEmailLoginSubmit} className="flex flex-col gap-4">
+                        <div className="text-center mb-2">
+                          <p className="text-xs text-secondary-text font-light leading-relaxed">
+                            Enter your email address and password below to log in securely.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] uppercase tracking-wider font-semibold text-secondary-text">Email Address</label>
+                          <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-text" />
+                            <input
+                              required
+                              type="email"
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              placeholder="admin@richladyboutique.com"
+                              className="w-full pl-11 pr-4 py-3.5 bg-card border border-border-accent/40 rounded-full text-xs text-primary-text focus:outline-none focus:border-muted-gold"
+                              disabled={isLoading}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] uppercase tracking-wider font-semibold text-secondary-text">Password</label>
+                          <div className="relative">
+                            <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary-text" />
+                            <input
+                              required
+                              type="password"
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="••••••••••••"
+                              className="w-full pl-11 pr-4 py-3.5 bg-card border border-border-accent/40 rounded-full text-xs text-primary-text focus:outline-none focus:border-muted-gold"
+                              disabled={isLoading}
+                            />
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={isLoading}
+                          className="w-full bg-forest-green hover:bg-[#1a2b24] text-primary-bg py-4 text-[10px] font-sans font-semibold tracking-widest uppercase rounded-full border border-muted-gold/20 hover:border-muted-gold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm mt-4 disabled:opacity-50"
+                        >
+                          Secure Login
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      </form>
+                    )
                   ) : (
                     /* REGISTER FORM DETAILS */
                     <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-4">

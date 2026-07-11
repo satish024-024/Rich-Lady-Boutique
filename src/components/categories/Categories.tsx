@@ -1,12 +1,22 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { categoriesData } from "@/data/categories";
+import { getCategories, getLocalCategories } from "@/utils/db";
+import { Category } from "@/types/category";
 import { FadeIn } from "@/components/motion/FadeIn";
 
 export function Categories() {
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    // Initial sync load from local storage
+    setCategories(getLocalCategories());
+    // Async DB fetch
+    getCategories().then(setCategories);
+  }, []);
+
   return (
     <section
       className="w-full py-20 bg-primary-bg overflow-hidden select-none border-b border-border-accent/40"
@@ -29,7 +39,7 @@ export function Categories() {
 
         {/* Curated Categories Grid - Balanced 6 Columns */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6 max-w-6xl mx-auto justify-center">
-          {categoriesData.map((cat, idx) => (
+          {categories.map((cat, idx) => (
             <FadeIn
               key={cat.id}
               delay={idx * 0.06}

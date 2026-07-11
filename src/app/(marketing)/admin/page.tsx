@@ -5,16 +5,32 @@ import Link from "next/link";
 import { getProducts, addProduct, deleteProduct, updateProductPhoto, updateProductStock, updateProductCollectionTag, updateProductSpecs } from "@/utils/db";
 import { Product } from "@/types/product";
 import { FadeIn } from "@/components/motion/FadeIn";
-import { Plus, Trash2, Edit3, Image as ImageIcon, Sparkles, ShoppingBag, FolderHeart, Mail, Phone, RefreshCw, Search, Tag, Sliders } from "lucide-react";
+import { 
+  Plus, Trash2, Edit3, Image as ImageIcon, Sparkles, ShoppingBag, FolderHeart, 
+  Mail, Phone, RefreshCw, Search, Tag, Sliders, DollarSign, MessageSquare, 
+  HelpCircle, Settings, Download, Upload, CheckCircle2, User, Globe, AlertTriangle
+} from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/providers/AuthProvider";
 import { isAdmin } from "@/utils/auth";
 import { useRouter } from "next/navigation";
 
+// Modular subviews
+import { DashboardView } from "./dashboard/DashboardView";
+import { ProductsView } from "./products/ProductsView";
+import { CategoriesView } from "./categories/CategoriesView";
+import { CSVImportView } from "./csv-import/CSVImportView";
+import { HomepageView } from "./homepage/HomepageView";
+import { SettingsView } from "./settings/SettingsView";
+
 export default function AdminPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
 
+  // Tab State
+  const [activeTab, setActiveTab] = useState<"overview" | "catalog" | "categories" | "csv-import" | "homepage" | "testimonials" | "faqs" | "site_copy" | "orders" | "notifications" | "settings">("overview");
+
+  // Products state
   const [products, setProducts] = useState<Product[]>([]);
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -52,18 +68,18 @@ export default function AdminPage() {
     washingStandard: "",
   });
 
-  const [activeTab, setActiveTab] = useState<"catalog" | "orders" | "notifications">("catalog");
+  // Orders State
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
 
-  // Notifications Log States
+  // Communications Logs State
   const [logs, setLogs] = useState<any[]>([]);
   const [totalLogsCount, setTotalLogsCount] = useState(0);
   const [currentLogsPage, setCurrentLogsPage] = useState(1);
   const [filterType, setFilterType] = useState<"all" | "email" | "sms">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "sent" | "failed" | "pending">("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [logsSearchInput, setLogsSearchInput] = useState(""); // local input state before applying
+  const [logsSearchInput, setLogsSearchInput] = useState("");
   const [logCounters, setLogCounters] = useState({
     sentEmails: 0,
     failedEmails: 0,
@@ -72,6 +88,127 @@ export default function AdminPage() {
   });
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
+  // Testimonials/Reviews CMS State
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [newReviewAuthor, setNewReviewAuthor] = useState("");
+  const [newReviewText, setNewReviewText] = useState("");
+  const [newReviewRating, setNewReviewRating] = useState("5");
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+
+  // FAQs CMS State
+  const [faqs, setFaqs] = useState<any[]>([]);
+  const [newFaqQuestion, setNewFaqQuestion] = useState("");
+  const [newFaqAnswer, setNewFaqAnswer] = useState("");
+  const [newFaqCategory, setNewFaqCategory] = useState("Orders");
+  const [editingFaqId, setEditingFaqId] = useState<string | null>(null);
+
+  // Site Copy States
+  const [heroHeading, setHeroHeading] = useState("");
+  const [heroSubheading, setHeroSubheading] = useState("");
+  const [whatsappLink, setWhatsappLink] = useState("");
+  const [boutiqueAddress, setBoutiqueAddress] = useState("");
+  const [boutiqueEmail, setBoutiqueEmail] = useState("");
+  const [instagramHandle, setInstagramHandle] = useState("");
+
+  // Bulk Product Uploader States
+  const [bulkPresetFolder, setBulkPresetFolder] = useState("/images");
+  const [bulkPrefixCode, setBulkPrefixCode] = useState("RL");
+  const [bulkBaseTitle, setBulkBaseTitle] = useState("");
+  const [bulkBasePrice, setBulkBasePrice] = useState("");
+  const [bulkCategory, setBulkCategory] = useState("Sarees");
+  const [bulkFabric, setBulkFabric] = useState("");
+  const [bulkDescription, setBulkDescription] = useState("");
+  const [bulkCollectionTag, setBulkCollectionTag] = useState("");
+  const [bulkStock, setBulkStock] = useState("10");
+  const [bulkSelectedPresetImages, setBulkSelectedPresetImages] = useState<string[]>([]);
+  const [bulkStartCodeNum, setBulkStartCodeNum] = useState("");
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
+
+  // Preloaded boutique stock categories
+  const categories = ["Sarees", "Kurtis", "Lehengas", "Gowns", "Western Wear", "Kids Wear"];
+
+  // Preset stock images
+  const imagePresets = [
+    { label: "Saree Silk", path: "/images/cat_sarees.jpg" },
+    { label: "Saree Details", path: "/images/prod_silk_saree.jpg" },
+    { label: "Kurti Embroidered", path: "/images/cat_kurtis.jpg" },
+    { label: "Kurti Yellow", path: "/images/prod_anarkali_kurti.jpg" },
+    { label: "Lehenga Heavy", path: "/images/cat_lehengas.jpg" },
+    { label: "Lehenga Velvet Maroon", path: "/images/prod_velvet_lehenga.jpg" },
+    { label: "Gown Emerald Organza", path: "/images/prod_party_gown.jpg" },
+    { label: "Western Wear Dress", path: "/images/cat_western.jpg" },
+    { label: "Kids Wear Traditional", path: "/images/cat_kids.jpg" },
+    { label: "Kids Sherwani Gold", path: "/images/prod_kids_sherwani.jpg" }
+  ];
+
+  // Auth Guards & Init
+  useEffect(() => {
+    if (!isLoading) {
+      if (!user || !isAdmin(user)) {
+        toast.error("Access Denied: You do not have administrator permissions.");
+        router.push("/");
+      }
+    }
+  }, [user, isLoading, router]);
+
+  // Load Products & Orders
+  useEffect(() => {
+    getProducts().then(setProducts);
+    fetchOrders();
+    fetchLogs();
+  }, []);
+
+  // Load CMS data on mount
+  useEffect(() => {
+    // 1. Testimonials
+    const savedReviews = localStorage.getItem("rich-lady-reviews");
+    if (savedReviews) {
+      setReviews(JSON.parse(savedReviews));
+    } else {
+      const defaultReviews = [
+        { id: "review-1", author: "Rama Krishna", rating: 5, text: "Nice collection, best quality highly recommend." },
+        { id: "review-2", author: "Prasad Phani", rating: 5, text: "Wide variety of collections and excellent service. Value for money!" },
+        { id: "review-3", author: "Sree Vani", rating: 5, text: "Wow nice collection... reasonable prices." },
+        { id: "review-4", author: "Outtule Laxmi", rating: 5, text: "Superb and Excellent collection with reasonable cost..." }
+      ];
+      setReviews(defaultReviews);
+      localStorage.setItem("rich-lady-reviews", JSON.stringify(defaultReviews));
+    }
+
+    // 2. FAQs
+    const savedFaqs = localStorage.getItem("rich-lady-faqs");
+    if (savedFaqs) {
+      setFaqs(JSON.parse(savedFaqs));
+    } else {
+      const defaultFaqs = [
+        { id: "faq-1", category: "Shipping", question: "Do you ship worldwide?", answer: "Yes, we ship our luxury designer wear globally. Transit times vary from 5-10 business days." },
+        { id: "faq-2", category: "Customization", question: "Can I customize sizes or fabric?", answer: "Absolutely! Since we run a specialized luxury atelier, you can connect with our designers on WhatsApp to specify custom measurements, neck cuts, and sleeve lengths." },
+        { id: "faq-3", category: "Orders", question: "How do I track my order?", answer: "Once your design is shipped, you will receive a WhatsApp and email confirmation containing your Shiprocket tracking number." }
+      ];
+      setFaqs(defaultFaqs);
+      localStorage.setItem("rich-lady-faqs", JSON.stringify(defaultFaqs));
+    }
+
+    // 3. Site Copy Customization
+    const savedCopy = localStorage.getItem("rich-lady-site-copy");
+    if (savedCopy) {
+      const copy = JSON.parse(savedCopy);
+      setHeroHeading(copy.heroHeading || "Timeless Indian Craftsmanship, Modern Grace");
+      setHeroSubheading(copy.heroSubheading || "Curated collections of premium sarees, bespoke kurtis, and wedding lehengas handcrafted by master artisans.");
+      setWhatsappLink(copy.whatsappLink || "https://wa.me/919030443306");
+      setBoutiqueAddress(copy.boutiqueAddress || "Godavari District, Andhra Pradesh, India");
+      setBoutiqueEmail(copy.boutiqueEmail || "admin@richladyboutique.com");
+      setInstagramHandle(copy.instagramHandle || "@RichLadyBoutique");
+    } else {
+      setHeroHeading("Timeless Indian Craftsmanship, Modern Grace");
+      setHeroSubheading("Curated collections of premium sarees, bespoke kurtis, and wedding lehengas handcrafted by master artisans.");
+      setWhatsappLink("https://wa.me/919030443306");
+      setBoutiqueAddress("Godavari District, Andhra Pradesh, India");
+      setBoutiqueEmail("admin@richladyboutique.com");
+      setInstagramHandle("@RichLadyBoutique");
+    }
+  }, []);
+
   const fetchOrders = async () => {
     setIsLoadingOrders(true);
     try {
@@ -79,11 +216,9 @@ export default function AdminPage() {
       const data = await res.json();
       if (data.success) {
         setOrders(data.orders);
-      } else {
-        toast.error("Failed to load orders: " + (data.error || ""));
       }
-    } catch (err: any) {
-      toast.error("Network error loading orders");
+    } catch (err) {
+      console.error("Failed to load orders:", err);
     } finally {
       setIsLoadingOrders(false);
     }
@@ -105,11 +240,9 @@ export default function AdminPage() {
         setLogs(data.logs);
         setTotalLogsCount(data.totalCount);
         setLogCounters(data.counters);
-      } else {
-        toast.error("Failed to load communication logs: " + (data.error || ""));
       }
     } catch (err) {
-      toast.error("Error loading notification logs");
+      console.error("Error loading notification logs:", err);
     } finally {
       setIsLoadingLogs(false);
     }
@@ -126,7 +259,7 @@ export default function AdminPage() {
       const data = await res.json();
       if (data.success) {
         toast.success(data.message || "Notification resent successfully!", { id: toastId });
-        await fetchLogs(); // Refresh logs
+        await fetchLogs();
       } else {
         throw new Error(data.error || "Retry failed");
       }
@@ -148,7 +281,7 @@ export default function AdminPage() {
       const data = await res.json();
       if (data.success) {
         toast.success(data.message || "Shipment created successfully!", { id: toastId });
-        await fetchOrders(); // Refresh orders to show tracking details
+        await fetchOrders();
       } else {
         throw new Error(data.error || "Failed to create shipment");
       }
@@ -157,45 +290,12 @@ export default function AdminPage() {
     }
   };
 
-  useEffect(() => {
-    if (activeTab === "orders") {
-      fetchOrders();
-    } else if (activeTab === "notifications") {
-      fetchLogs();
-    }
-  }, [activeTab, currentLogsPage, filterType, filterStatus, searchTerm]);
-
-  const categories = ["Sarees", "Kurtis", "Lehengas", "Gowns", "Western Wear", "Kids Wear"];
-
-  // Preloaded boutique stock images for easy selection in the demo
-  const imagePresets = [
-    { label: "Saree Silk", path: "/images/cat_sarees.jpg" },
-    { label: "Saree Details", path: "/images/prod_silk_saree.jpg" },
-    { label: "Kurti Embroidered", path: "/images/cat_kurtis.jpg" },
-    { label: "Kurti Yellow", path: "/images/prod_anarkali_kurti.jpg" },
-    { label: "Lehenga Heavy", path: "/images/cat_lehengas.jpg" },
-    { label: "Lehenga Velvet Maroon", path: "/images/prod_velvet_lehenga.jpg" },
-    { label: "Gown Emerald Organza", path: "/images/prod_party_gown.jpg" },
-    { label: "Western Wear Dress", path: "/images/cat_western.jpg" },
-    { label: "Kids Wear Traditional", path: "/images/cat_kids.jpg" },
-    { label: "Kids Sherwani Gold", path: "/images/prod_kids_sherwani.jpg" }
-  ];
-
-  useEffect(() => {
-    getProducts().then(setProducts);
-  }, []);
-
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
       toast.error("Please upload an image file (JPEG, PNG, WEBP, etc.)");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image file size must be less than 5MB");
       return;
     }
 
@@ -233,6 +333,7 @@ export default function AdminPage() {
     }
   };
 
+  // Add Product Submit
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -299,55 +400,300 @@ export default function AdminPage() {
     }
   };
 
+  // Bulk Product Uploader Submit
+  const handleBulkUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (bulkSelectedPresetImages.length === 0) {
+      toast.error("Please select at least one preset image for bulk creation");
+      return;
+    }
+    if (!bulkBaseTitle.trim()) {
+      toast.error("Please enter a base title");
+      return;
+    }
+    if (!bulkBasePrice || isNaN(Number(bulkBasePrice))) {
+      toast.error("Please enter a valid price");
+      return;
+    }
+
+    // Determine starting code suffix
+    let currentStartCode = Number(bulkStartCodeNum);
+    if (isNaN(currentStartCode) || currentStartCode <= 0) {
+      // Auto-Increment calculation: Scan current products for code numbers
+      let maxNum = 1000;
+      products.forEach((p) => {
+        if (p.collectionTag) {
+          const match = p.collectionTag.match(/\d+/);
+          if (match) {
+            const num = Number(match[0]);
+            if (num > maxNum) maxNum = num;
+          }
+        }
+      });
+      currentStartCode = maxNum + 1;
+    }
+
+    const toastId = toast.loading(`Sequential uploading of ${bulkSelectedPresetImages.length} products in progress...`);
+    setIsBulkUploading(true);
+
+    try {
+      for (let i = 0; i < bulkSelectedPresetImages.length; i++) {
+        const imagePath = bulkSelectedPresetImages[i];
+        const codeNum = currentStartCode + i;
+        const codeString = `${bulkPrefixCode}-${codeNum}`;
+        const newTitle = `${bulkBaseTitle} - Code ${codeString}`;
+        const newId = newTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+        const newProd: Product = {
+          id: newId,
+          name: newTitle,
+          price: Number(bulkBasePrice),
+          imageUrl: imagePath,
+          category: bulkCategory,
+          collectionTag: codeString,
+          rating: 4.8,
+          reviewsCount: 3,
+          isNewArrival: true,
+          description: bulkDescription.trim() !== "" ? bulkDescription.trim() : `Exquisite ${bulkCategory} design, catalog code ${codeString}. Features premium artisanal details.`,
+          stock: Number(bulkStock) || 10,
+          fabric: bulkFabric.trim() !== "" ? bulkFabric.trim() : undefined,
+        };
+
+        await addProduct(newProd);
+      }
+
+      toast.success(`Successfully uploaded ${bulkSelectedPresetImages.length} products sequentially!`, { id: toastId });
+      setBulkSelectedPresetImages([]);
+      setBulkBaseTitle("");
+      setBulkBasePrice("");
+      setBulkFabric("");
+      setBulkDescription("");
+      const updated = await getProducts();
+      setProducts(updated);
+    } catch (err: any) {
+      toast.error(`Bulk upload failed: ${err.message}`, { id: toastId });
+    } finally {
+      setIsBulkUploading(false);
+    }
+  };
+
+  // Specs Editor Form Submission
+  const handleUpdateSpecs = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSpecsProduct) return;
+
+    const toastId = toast.loading("Updating specifications...");
+    try {
+      await updateProductSpecs(editingSpecsProduct.id, editSpecsData);
+      const updated = await getProducts();
+      setProducts(updated);
+      setEditingSpecsProduct(null);
+      toast.success("Specifications updated successfully!", { id: toastId });
+    } catch (err: any) {
+      toast.error(`Update failed: ${err.message}`, { id: toastId });
+    }
+  };
+
+  // Stock update
+  const handleStockChange = async (id: string, newStock: number) => {
+    try {
+      await updateProductStock(id, newStock);
+      setProducts(current => current.map(p => p.id === id ? { ...p, stock: newStock } : p));
+      toast.success("Stock level updated");
+    } catch (err) {
+      toast.error("Failed to update stock");
+    }
+  };
+
+  // Product Delete
   const handleDeleteProduct = async (id: string, name: string) => {
-    const toastId = toast.loading("Removing product...");
+    if (!confirm(`Are you sure you want to delete "${name}"?`)) return;
+
+    const toastId = toast.loading("Removing product from catalog...");
     try {
       await deleteProduct(id);
-      const updated = await getProducts();
-      setProducts(updated);
-      toast.success(`Removed "${name}" from the store`, { id: toastId });
-    } catch (err: any) {
-      toast.error(`Delete failed: ${err.message}`, { id: toastId });
+      setProducts(current => current.filter(p => p.id !== id));
+      toast.success("Product removed successfully!", { id: toastId });
+    } catch (err) {
+      toast.error("Failed to delete product", { id: toastId });
     }
   };
 
-  const handleUpdateProductPhoto = async (id: string, newPhotoPath: string) => {
-    const toastId = toast.loading("Updating product photo...");
-    try {
-      await updateProductPhoto(id, newPhotoPath);
-      const updated = await getProducts();
-      setProducts(updated);
-      toast.success("Product photo updated successfully!", { id: toastId });
-    } catch (err: any) {
-      toast.error(`Photo update failed: ${err.message}`, { id: toastId });
+  // Testimonials CMS submit
+  const handleSaveReview = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newReviewAuthor.trim() || !newReviewText.trim()) {
+      toast.error("Please fill in reviewer name and quote text");
+      return;
     }
+
+    let updatedReviews = [...reviews];
+    if (editingReviewId) {
+      updatedReviews = updatedReviews.map((rev) =>
+        rev.id === editingReviewId
+          ? { ...rev, author: newReviewAuthor, text: newReviewText, rating: Number(newReviewRating) }
+          : rev
+      );
+      toast.success("Testimonial updated successfully!");
+    } else {
+      const newRev = {
+        id: `review-${Date.now()}`,
+        author: newReviewAuthor,
+        text: newReviewText,
+        rating: Number(newReviewRating),
+      };
+      updatedReviews.unshift(newRev);
+      toast.success("New testimonial added!");
+    }
+
+    setReviews(updatedReviews);
+    localStorage.setItem("rich-lady-reviews", JSON.stringify(updatedReviews));
+    setNewReviewAuthor("");
+    setNewReviewText("");
+    setNewReviewRating("5");
+    setEditingReviewId(null);
   };
 
-  const handleResetCatalog = async () => {
-    const toastId = toast.loading("Resetting catalog and seeding database...");
-    try {
-      const res = await fetch("/api/seed");
-      const data = await res.json();
-      if (data.success) {
-        const updated = await getProducts();
-        setProducts(updated);
-        toast.success("Catalog successfully reset and seeded in Supabase!", { id: toastId });
-      } else {
-        throw new Error(data.error || "Failed to seed");
+  const handleDeleteReview = (id: string) => {
+    if (!confirm("Are you sure you want to delete this review?")) return;
+    const filtered = reviews.filter((rev) => rev.id !== id);
+    setReviews(filtered);
+    localStorage.setItem("rich-lady-reviews", JSON.stringify(filtered));
+    toast.success("Review deleted successfully");
+  };
+
+  // FAQs CMS submit
+  const handleSaveFaq = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFaqQuestion.trim() || !newFaqAnswer.trim()) {
+      toast.error("Please enter a question and an answer");
+      return;
+    }
+
+    let updatedFaqs = [...faqs];
+    if (editingFaqId) {
+      updatedFaqs = updatedFaqs.map((faq) =>
+        faq.id === editingFaqId
+          ? { ...faq, category: newFaqCategory, question: newFaqQuestion, answer: newFaqAnswer }
+          : faq
+      );
+      toast.success("FAQ updated successfully!");
+    } else {
+      const newFaq = {
+        id: `faq-${Date.now()}`,
+        category: newFaqCategory,
+        question: newFaqQuestion,
+        answer: newFaqAnswer,
+      };
+      updatedFaqs.push(newFaq);
+      toast.success("New FAQ added!");
+    }
+
+    setFaqs(updatedFaqs);
+    localStorage.setItem("rich-lady-faqs", JSON.stringify(updatedFaqs));
+    setNewFaqQuestion("");
+    setNewFaqAnswer("");
+    setNewFaqCategory("Orders");
+    setEditingFaqId(null);
+  };
+
+  const handleDeleteFaq = (id: string) => {
+    if (!confirm("Are you sure you want to delete this FAQ?")) return;
+    const filtered = faqs.filter((faq) => faq.id !== id);
+    setFaqs(filtered);
+    localStorage.setItem("rich-lady-faqs", JSON.stringify(filtered));
+    toast.success("FAQ deleted successfully");
+  };
+
+  // Site Copy Save
+  const handleSaveSiteCopy = (e: React.FormEvent) => {
+    e.preventDefault();
+    const copyData = {
+      heroHeading,
+      heroSubheading,
+      whatsappLink,
+      boutiqueAddress,
+      boutiqueEmail,
+      instagramHandle,
+    };
+    localStorage.setItem("rich-lady-site-copy", JSON.stringify(copyData));
+    toast.success("Boutique copy and metadata saved successfully!");
+  };
+
+  // Backups CMS Operations
+  const handleExportBackup = () => {
+    const backupData = {
+      products,
+      reviews,
+      faqs,
+      siteCopy: {
+        heroHeading,
+        heroSubheading,
+        whatsappLink,
+        boutiqueAddress,
+        boutiqueEmail,
+        instagramHandle,
+      },
+      exportedAt: new Date().toISOString(),
+    };
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+    const downloadAnchor = document.createElement("a");
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `rich-lady-boutique-backup-${Date.now()}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+    toast.success("Boutique library backup exported!");
+  };
+
+  const handleImportBackup = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const parsed = JSON.parse(event.target?.result as string);
+        if (parsed.products && Array.isArray(parsed.products)) {
+          // Restore Products
+          localStorage.setItem("rich-lady-products", JSON.stringify(parsed.products));
+          setProducts(parsed.products);
+        }
+        if (parsed.reviews && Array.isArray(parsed.reviews)) {
+          localStorage.setItem("rich-lady-reviews", JSON.stringify(parsed.reviews));
+          setReviews(parsed.reviews);
+        }
+        if (parsed.faqs && Array.isArray(parsed.faqs)) {
+          localStorage.setItem("rich-lady-faqs", JSON.stringify(parsed.faqs));
+          setFaqs(parsed.faqs);
+        }
+        if (parsed.siteCopy) {
+          localStorage.setItem("rich-lady-site-copy", JSON.stringify(parsed.siteCopy));
+          setHeroHeading(parsed.siteCopy.heroHeading || "");
+          setHeroSubheading(parsed.siteCopy.heroSubheading || "");
+          setWhatsappLink(parsed.siteCopy.whatsappLink || "");
+          setBoutiqueAddress(parsed.siteCopy.boutiqueAddress || "");
+          setBoutiqueEmail(parsed.siteCopy.boutiqueEmail || "");
+          setInstagramHandle(parsed.siteCopy.instagramHandle || "");
+        }
+        toast.success("Boutique library restored successfully!");
+      } catch (err) {
+        toast.error("Invalid backup file format");
       }
-    } catch (err: any) {
-      toast.error(`Reset failed: ${err.message}`, { id: toastId });
-    }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
   };
 
-  useEffect(() => {
-    if (!isLoading) {
-      if (!user || !isAdmin(user)) {
-        toast.error("Access Denied: You do not have administrator permissions.");
-        router.push("/");
-      }
-    }
-  }, [user, isLoading, router]);
+  const handleResetToDefaults = () => {
+    if (!confirm("Are you sure you want to reset everything back to seed defaults? This will erase custom products, reviews, and edits.")) return;
+    localStorage.removeItem("rich-lady-products");
+    localStorage.removeItem("rich-lady-reviews");
+    localStorage.removeItem("rich-lady-faqs");
+    localStorage.removeItem("rich-lady-site-copy");
+    window.location.reload();
+  };
 
   if (isLoading || !user || !isAdmin(user)) {
     return (
@@ -358,1123 +704,546 @@ export default function AdminPage() {
     );
   }
 
+  // Calculate overview metrics
+  const totalProductsCount = products.length;
+  const totalOrdersCount = orders.length;
+  const totalRevenue = orders.reduce((sum, ord) => sum + Number(ord.total || 0), 0);
+  const totalCommunicationsCount = logs.length;
+
   return (
     <div className="w-full min-h-screen bg-primary-bg py-32 font-sans select-none">
       <div className="max-w-7xl mx-auto px-6">
         
         {/* Page Header */}
-        <FadeIn className="flex flex-col items-center text-center mb-16">
+        <FadeIn className="flex flex-col items-center text-center mb-12">
           <span className="font-serif text-[10px] md:text-xs tracking-[0.25em] text-muted-gold font-medium uppercase mb-2">
-            Demo Control Center
+            Control Center
           </span>
           <h1 className="font-serif text-4xl md:text-5xl text-primary-text font-normal mb-4">
             Boutique Admin Panel
           </h1>
           <p className="text-xs text-secondary-text max-w-md font-light leading-relaxed">
-            Easily manage your boutique catalog in real-time. Add new styles, edit product details, swap image photography, and watch your changes immediately take effect across the storefront!
+            Manage your boutique catalog, orders, testimonials, FAQs, and site contents. Authenticated as: <span className="font-semibold text-primary-text">{user.email}</span>
           </p>
           <div className="ornament-line mt-6">
             <span className="ornament-diamond" />
           </div>
         </FadeIn>
 
-        <FadeIn className="flex justify-center gap-4 mb-10">
-          <button
-            onClick={() => setActiveTab("catalog")}
-            className={`px-6 py-2.5 text-xs font-sans font-bold uppercase tracking-wider rounded-full border transition-all cursor-pointer ${
-              activeTab === "catalog"
-                ? "bg-forest-green text-primary-bg border-forest-green"
-                : "border-border-accent/40 text-secondary-text hover:border-muted-gold"
-            }`}
-          >
-            Manage Catalog
-          </button>
-          <button
-            onClick={() => setActiveTab("orders")}
-            className={`px-6 py-2.5 text-xs font-sans font-bold uppercase tracking-wider rounded-full border transition-all cursor-pointer ${
-              activeTab === "orders"
-                ? "bg-forest-green text-primary-bg border-forest-green"
-                : "border-border-accent/40 text-secondary-text hover:border-muted-gold"
-            }`}
-          >
-            Orders Log
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab("notifications");
-              setCurrentLogsPage(1);
-            }}
-            className={`px-6 py-2.5 text-xs font-sans font-bold uppercase tracking-wider rounded-full border transition-all cursor-pointer ${
-              activeTab === "notifications"
-                ? "bg-forest-green text-primary-bg border-forest-green"
-                : "border-border-accent/40 text-secondary-text hover:border-muted-gold"
-            }`}
-          >
-            Communications Log
-          </button>
+        {/* Dynamic Navigation Tabs Strip */}
+        <FadeIn className="flex flex-wrap justify-center gap-3 mb-10">
+          {[
+            { id: "overview", label: "Overview", icon: Sliders },
+            { id: "catalog", label: "Products", icon: ShoppingBag },
+            { id: "categories", label: "Categories", icon: FolderHeart },
+            { id: "csv-import", label: "CSV Import", icon: Upload },
+            { id: "homepage", label: "Homepage Copy", icon: Globe },
+            { id: "testimonials", label: "Testimonials", icon: MessageSquare },
+            { id: "faqs", label: "FAQs CMS", icon: HelpCircle },
+            { id: "orders", label: "Orders Log", icon: FolderHeart },
+            { id: "notifications", label: "Communications", icon: Mail },
+            { id: "settings", label: "Settings", icon: Settings }
+          ].map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`px-5 py-2.5 text-[10px] font-sans font-bold uppercase tracking-wider rounded-full border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  activeTab === tab.id
+                    ? "bg-forest-green text-primary-bg border-forest-green"
+                    : "border-border-accent/40 text-secondary-text hover:border-muted-gold"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {tab.label}
+              </button>
+            );
+          })}
         </FadeIn>
 
-        {activeTab === "catalog" && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10 items-start">
-            {/* Left Block: Add Product Form */}
-          <FadeIn className="lg:col-span-1 bg-card border border-border-accent/40 p-8 rounded-md shadow-xs">
-            <h2 className="font-serif text-xl text-primary-text mb-6 flex items-center gap-2">
-              <Plus className="w-5 h-5 text-muted-gold" />
-              Add New Product
-            </h2>
+        {/* 1. OVERVIEW DASHBOARD */}
+        {activeTab === "overview" && (
+          <DashboardView
+            totalRevenue={totalRevenue}
+            totalOrdersCount={totalOrdersCount}
+            totalProductsCount={totalProductsCount}
+            totalCommunicationsCount={totalCommunicationsCount}
+            orders={orders}
+            setActiveTab={setActiveTab}
+          />
+        )}
 
-            <form onSubmit={handleAddProduct} className="flex flex-col gap-5 text-xs text-secondary-text">
-              
-              {/* Product Name */}
-              <div className="flex flex-col gap-2">
-                <label className="uppercase tracking-wider font-semibold text-secondary-text">Product Name</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Traditional Zari Saree"
-                  className="bg-primary-bg border border-border-accent p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold transition-colors"
-                />
-              </div>
+        {/* 2. MANAGE CATALOG (PRODUCTS CMS) */}
+        {activeTab === "catalog" && <ProductsView />}
 
-              {/* Product Price */}
-              <div className="flex flex-col gap-2">
-                <label className="uppercase tracking-wider font-semibold text-secondary-text">Price (INR - ₹)</label>
-                <input
-                  required
-                  type="number"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  placeholder="e.g. 1999"
-                  className="bg-primary-bg border border-border-accent p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold transition-colors"
-                />
-              </div>
+        {/* 2B. CURATED CATEGORIES */}
+        {activeTab === "categories" && <CategoriesView />}
 
-              {/* Initial Stock Level */}
-              <div className="flex flex-col gap-2">
-                <label className="uppercase tracking-wider font-semibold text-secondary-text">Initial Stock Level</label>
-                <input
-                  required
-                  type="number"
-                  value={stock}
-                  onChange={(e) => setStock(e.target.value)}
-                  placeholder="e.g. 10"
-                  className="bg-primary-bg border border-border-accent p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold transition-colors"
-                />
-              </div>
+        {/* 2C. CSV BATCH IMPORT */}
+        {activeTab === "csv-import" && <CSVImportView />}
 
-              {/* Category */}
-              <div className="flex flex-col gap-2">
-                <label className="uppercase tracking-wider font-semibold text-secondary-text">Category Selection</label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="bg-primary-bg border border-border-accent p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold transition-colors cursor-pointer"
-                >
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
+        {/* 2D. HOMEPAGE MANAGER */}
+        {activeTab === "homepage" && <HomepageView />}
 
-              {/* Occasion/Collection Tag */}
-              <div className="flex flex-col gap-2">
-                <label className="uppercase tracking-wider font-semibold text-secondary-text">Occasion / Collection Tag</label>
-                <select
-                  value={collectionTag}
-                  onChange={(e) => setCollectionTag(e.target.value)}
-                  className="bg-primary-bg border border-border-accent p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold transition-colors cursor-pointer"
-                >
-                  <option value="">None (General Catalog)</option>
-                  <option value="wedding">Wedding Collection</option>
-                  <option value="festival">Festival Collection</option>
-                  <option value="office-wear">Office Wear</option>
-                  <option value="daily-wear">Daily Wear</option>
-                  <option value="party-wear">Party Wear</option>
-                  <option value="traditional">Traditional</option>
-                  <option value="designer">Designer</option>
-                  <option value="casual">Casual</option>
-                </select>
-              </div>
-
-              {/* Dropdown for Active Image Slot */}
-              <div className="flex flex-col gap-2">
-                <label className="uppercase tracking-wider font-semibold text-secondary-text">Target Image Slot</label>
-                <select
-                  value={activeImageSlot}
-                  onChange={(e) => setActiveImageSlot(e.target.value as any)}
-                  className="bg-primary-bg border border-border-accent p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold transition-colors cursor-pointer"
-                >
-                  <option value="main">Main Product Photo</option>
-                  <option value="side1">Side Profile 1 Photo</option>
-                  <option value="side2">Side Profile 2 Photo</option>
-                </select>
-              </div>
-
-              {/* Image Selection presets */}
-              <div className="flex flex-col gap-2">
-                <label className="uppercase tracking-wider font-semibold text-secondary-text">Select Photo Preset for Active Slot</label>
-                <div className="grid grid-cols-5 gap-2 max-h-[120px] overflow-y-auto p-1 border border-border-accent/40 rounded-xs bg-primary-bg no-scrollbar">
-                  {imagePresets.map((preset) => {
-                    const isActiveValue = 
-                      activeImageSlot === "main" 
-                        ? imageUrl === preset.path 
-                        : activeImageSlot === "side1" 
-                        ? sideProfile1 === preset.path 
-                        : sideProfile2 === preset.path;
-
-                    return (
-                      <div
-                        key={preset.label}
-                        onClick={() => {
-                          if (activeImageSlot === "main") {
-                            setImageUrl(preset.path);
-                          } else if (activeImageSlot === "side1") {
-                            setSideProfile1(preset.path);
-                          } else if (activeImageSlot === "side2") {
-                            setSideProfile2(preset.path);
-                          }
-                        }}
-                        className={`aspect-square rounded-xs border overflow-hidden cursor-pointer hover:border-muted-gold relative ${
-                          isActiveValue
-                            ? "border-muted-gold ring-1 ring-muted-gold/20"
-                            : "border-border-accent/40"
-                        }`}
-                        title={preset.label}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={preset.path}
-                          alt={preset.label}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Or upload from storage */}
-              <div className="flex flex-col gap-2">
-                <label className="uppercase tracking-wider font-semibold text-secondary-text">Or Upload Image from Local Storage</label>
-                <div className="relative border border-dashed border-border-accent/50 hover:border-muted-gold p-4 rounded-xs text-center cursor-pointer transition-colors bg-primary-bg flex flex-col items-center justify-center gap-2 group min-h-[80px]">
+        {/* 3. TESTIMONIALS CMS */}
+        {activeTab === "testimonials" && (
+          <FadeIn className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            {/* Form */}
+            <div className="lg:col-span-1 bg-card border border-border-accent/40 p-6 rounded-2xl shadow-xs">
+              <h3 className="font-serif text-lg text-primary-text mb-5 flex items-center gap-2 border-b border-border-accent/20 pb-3">
+                <MessageSquare className="w-5 h-5 text-muted-gold" />
+                {editingReviewId ? "Edit Testimonial" : "Create Testimonial"}
+              </h3>
+              <form onSubmit={handleSaveReview} className="flex flex-col gap-4 text-xs text-secondary-text">
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-semibold">Author Name</label>
                   <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    disabled={isUploading}
-                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
+                    type="text"
+                    required
+                    value={newReviewAuthor}
+                    onChange={(e) => setNewReviewAuthor(e.target.value)}
+                    placeholder="e.g. Sita Lakshmi"
+                    className="bg-primary-bg border border-border-accent p-2.5 rounded-lg text-primary-text"
                   />
-                  <div className="flex flex-col items-center gap-1">
-                    <span className="font-semibold text-muted-gold group-hover:underline">
-                      {isUploading ? "Uploading file..." : "Choose Local Image File"}
-                    </span>
-                    <span className="text-[10px] text-secondary-text/70">
-                      Supports PNG, JPG, WEBP (Max 5MB)
-                    </span>
-                  </div>
                 </div>
-              </div>
-
-              {/* Or custom URL */}
-              <div className="flex flex-col gap-2">
-                <label className="uppercase tracking-wider font-semibold text-secondary-text">Or Custom Image URL for Active Slot</label>
-                <input
-                  type="text"
-                  value={
-                    activeImageSlot === "main" 
-                      ? imageUrl 
-                      : activeImageSlot === "side1" 
-                      ? sideProfile1 
-                      : sideProfile2
-                  }
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (activeImageSlot === "main") {
-                      setImageUrl(val);
-                    } else if (activeImageSlot === "side1") {
-                      setSideProfile1(val);
-                    } else if (activeImageSlot === "side2") {
-                      setSideProfile2(val);
-                    }
-                  }}
-                  placeholder="https://images.unsplash.com/..."
-                  className="bg-primary-bg border border-border-accent p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold transition-colors"
-                />
-              </div>
-
-              {/* Slots Status Display */}
-              <div className="bg-[#FAF8F3]/50 border border-border-accent/35 p-3.5 rounded-sm flex flex-col gap-2 text-[10px]">
-                <div className="font-bold uppercase tracking-wider text-muted-gold">Assigned Slots Preview:</div>
-                <div className="flex items-center justify-between border-b border-border-accent/15 pb-1">
-                  <span>Main Photo:</span>
-                  <span className="font-semibold truncate max-w-[180px] text-primary-text">{imageUrl || "Not Set"}</span>
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-semibold">Review Quote</label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={newReviewText}
+                    onChange={(e) => setNewReviewText(e.target.value)}
+                    placeholder="Nice boutique, highly satisfied..."
+                    className="bg-primary-bg border border-border-accent p-2.5 rounded-lg text-primary-text outline-none focus:border-muted-gold resize-none"
+                  />
                 </div>
-                <div className="flex items-center justify-between border-b border-border-accent/15 pb-1">
-                  <span>Side Profile 1:</span>
-                  <span className="font-semibold truncate max-w-[180px] text-primary-text">{sideProfile1 || "Not Set"}</span>
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-semibold">Rating (1-5 stars)</label>
+                  <select
+                    value={newReviewRating}
+                    onChange={(e) => setNewReviewRating(e.target.value)}
+                    className="bg-primary-bg border border-border-accent p-2.5 rounded-lg text-primary-text"
+                  >
+                    <option value="5">5 Stars</option>
+                    <option value="4">4 Stars</option>
+                    <option value="3">3 Stars</option>
+                  </select>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>Side Profile 2:</span>
-                  <span className="font-semibold truncate max-w-[180px] text-primary-text">{sideProfile2 || "Not Set"}</span>
+                <div className="flex gap-3">
+                  <button type="submit" className="flex-1 bg-forest-green text-primary-bg py-3 text-[10px] uppercase font-bold tracking-widest rounded-lg cursor-pointer">
+                    Save Testimonial
+                  </button>
+                  {editingReviewId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingReviewId(null);
+                        setNewReviewAuthor("");
+                        setNewReviewText("");
+                        setNewReviewRating("5");
+                      }}
+                      className="bg-card text-secondary-text border border-border-accent/40 py-3 text-[10px] uppercase font-bold tracking-widest px-4 rounded-lg cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </div>
-              </div>
-
-              {/* Editorial Specifications Toggle */}
-              <div className="flex flex-col gap-2 mt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowEditorialSpecs(!showEditorialSpecs)}
-                  className="w-full flex items-center justify-between border border-border-accent/40 bg-card p-3 rounded-xs text-xs font-semibold uppercase tracking-wider text-primary-text hover:border-muted-gold transition-colors text-left cursor-pointer"
-                >
-                  <span className="flex items-center gap-2">
-                    <Sliders className="w-4 h-4 text-muted-gold" />
-                    <span>Editorial Specifications (Optional)</span>
-                  </span>
-                  <span>{showEditorialSpecs ? "▲" : "▼"}</span>
-                </button>
-
-                {showEditorialSpecs && (
-                  <div className="flex flex-col gap-3 p-4 border border-border-accent/30 rounded-xs bg-[#FFFDF9]/40 mt-1">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Fabric Type</label>
-                        <input
-                          type="text"
-                          value={fabric}
-                          onChange={(e) => setFabric(e.target.value)}
-                          placeholder="e.g. Fine Banarasi Silk"
-                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Dimensions</label>
-                        <input
-                          type="text"
-                          value={dimensions}
-                          onChange={(e) => setDimensions(e.target.value)}
-                          placeholder="e.g. 5.5m Saree + 0.8m Blouse"
-                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Garment Cut</label>
-                        <input
-                          type="text"
-                          value={garmentCut}
-                          onChange={(e) => setGarmentCut(e.target.value)}
-                          placeholder="e.g. Unstitched Saree"
-                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Artisan Origin</label>
-                        <input
-                          type="text"
-                          value={artisanOrigin}
-                          onChange={(e) => setArtisanOrigin(e.target.value)}
-                          placeholder="e.g. Varanasi, India"
-                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Weaving Style</label>
-                        <input
-                          type="text"
-                          value={weavingStyle}
-                          onChange={(e) => setWeavingStyle(e.target.value)}
-                          placeholder="e.g. Katan Silk Brocade"
-                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Craft Time</label>
-                        <input
-                          type="text"
-                          value={craftTime}
-                          onChange={(e) => setCraftTime(e.target.value)}
-                          placeholder="e.g. 72 Hours"
-                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Thread Count</label>
-                        <input
-                          type="text"
-                          value={threadCount}
-                          onChange={(e) => setThreadCount(e.target.value)}
-                          placeholder="e.g. 120s Double Warp"
-                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Garment Care</label>
-                        <input
-                          type="text"
-                          value={washingStandard}
-                          onChange={(e) => setWashingStandard(e.target.value)}
-                          placeholder="e.g. Dry Clean Only"
-                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Description */}
-              <div className="flex flex-col gap-2">
-                <label className="uppercase tracking-wider font-semibold text-secondary-text">Product Description</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Enter editorial description..."
-                  rows={4}
-                  className="bg-primary-bg border border-border-accent p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold transition-colors resize-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-forest-green hover:bg-[#1a2b24] text-primary-bg py-3.5 text-[10px] font-sans font-semibold tracking-widest uppercase rounded-xs border border-muted-gold/20 hover:border-muted-gold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-xs mt-2"
-              >
-                Add to Store Catalog
-              </button>
-            </form>
-            {/* Future: Supabase insert trigger config */}
-          </FadeIn>
-
-          {/* Right Block: Manage Products List */}
-          <FadeIn delay={0.15} className="lg:col-span-2 bg-card border border-border-accent/40 p-8 rounded-md shadow-xs">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="font-serif text-xl text-primary-text flex items-center gap-2">
-                <Edit3 className="w-5 h-5 text-muted-gold" />
-                Manage Live Catalog
-              </h2>
-              
-              <button
-                onClick={handleResetCatalog}
-                className="px-3 py-1.5 border border-border-accent/60 hover:border-muted-gold hover:text-muted-gold text-[9px] uppercase tracking-wider font-medium rounded-xs transition-colors cursor-pointer"
-              >
-                Reset Catalog Defaults
-              </button>
+              </form>
             </div>
 
             {/* List */}
-            <div className="flex flex-col gap-4 max-h-[70vh] overflow-y-auto pr-2 no-scrollbar">
-              {products.length > 0 ? (
-                products.map((prod) => (
-                  <div
-                    key={prod.id}
-                    className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-primary-bg/50 border border-border-accent/30 p-4 rounded-md hover:border-muted-gold/40 transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      {/* Product Photo */}
-                      <div className="w-16 h-20 bg-card border border-border-accent/40 rounded-xs overflow-hidden relative flex-shrink-0">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={prod.imageUrl}
-                          alt={prod.name}
-                          className="w-full h-full object-cover"
-                        />
+            <div className="lg:col-span-2 bg-card border border-border-accent/40 p-6 rounded-2xl shadow-xs">
+              <h3 className="font-serif text-lg text-primary-text mb-5 flex items-center gap-2 border-b border-border-accent/20 pb-3">
+                <Sliders className="w-5 h-5 text-muted-gold" />
+                Active Testimonials Registry
+              </h3>
+              <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto no-scrollbar">
+                {reviews.map((rev) => (
+                  <div key={rev.id} className="p-4 border border-border-accent/30 rounded-xl bg-primary-bg flex justify-between items-start gap-4">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-sans font-bold text-xs text-primary-text">{rev.author}</span>
+                        <span className="text-[8px] bg-muted-gold/15 text-muted-gold px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-bold">★ {rev.rating}</span>
                       </div>
-                      
-                      {/* Details info */}
-                      <div className="flex flex-col">
-                        <Link href={`/product/${prod.id}`} className="font-serif text-sm text-primary-text hover:text-muted-gold transition-colors font-medium">
-                          {prod.name}
-                        </Link>
-                        <span className="text-[9px] uppercase tracking-wider text-secondary-text mt-0.5 font-sans font-medium flex items-center gap-1.5 flex-wrap">
-                          <span>{prod.category}</span>
-                          <span>•</span>
-                          <span>₹{prod.price.toLocaleString("en-IN")}</span>
-                          <span>•</span>
-                          <span className={`font-bold ${prod.stock === 0 ? "text-red-700" : "text-emerald-700 bg-emerald-50/50 px-2 py-0.5 rounded-full"}`}>
-                            Stock: {prod.stock !== undefined ? prod.stock : 10}
-                          </span>
-                        </span>
-                        <p className="text-[10px] text-secondary-text/80 leading-relaxed font-light mt-1.5 max-w-sm line-clamp-1">
-                          {prod.description}
-                        </p>
-                      </div>
+                      <p className="font-serif italic text-xs text-secondary-text">"{rev.text}"</p>
                     </div>
-
-                    {/* Controls */}
-                    <div className="flex flex-wrap items-center gap-3 self-stretch md:self-auto justify-end">
-                      
-                      {/* Quick Edit Stock Level */}
-                      <div className="flex items-center gap-1 bg-card border border-border-accent/40 px-2 py-1 rounded-xs">
-                        <span className="text-[8px] uppercase font-sans font-semibold tracking-wider text-secondary-text">Stock:</span>
-                        <input
-                          type="number"
-                          min="0"
-                          defaultValue={prod.stock !== undefined ? prod.stock : 10}
-                          onBlur={async (e) => {
-                            const newStockVal = Number(e.target.value);
-                            if (isNaN(newStockVal) || newStockVal < 0) {
-                              toast.error("Please enter a valid stock count");
-                              return;
-                            }
-                            if (newStockVal === prod.stock) return;
-                            
-                            const toastId = toast.loading(`Updating stock for ${prod.name}...`);
-                            try {
-                              await updateProductStock(prod.id, newStockVal);
-                              const updated = await getProducts();
-                              setProducts(updated);
-                              toast.success("Stock level updated successfully!", { id: toastId });
-                            } catch (err: any) {
-                              toast.error(`Stock update failed: ${err.message}`, { id: toastId });
-                            }
-                          }}
-                          className="w-10 text-[9px] font-sans font-bold text-primary-text bg-transparent border-none outline-none text-center"
-                        />
-                      </div>
-
-                      {/* Quick Swap Photo Dropdown Trigger */}
-                      <div className="flex items-center gap-1.5 bg-card border border-border-accent/40 px-2 py-1.5 rounded-xs">
-                        <ImageIcon className="w-3.5 h-3.5 text-muted-gold" />
-                        <select
-                          onChange={(e) => handleUpdateProductPhoto(prod.id, e.target.value)}
-                          value={prod.imageUrl}
-                          className="text-[9px] uppercase font-sans font-semibold tracking-wider text-secondary-text bg-transparent border-none outline-none cursor-pointer"
-                        >
-                          <option disabled value="">Change Photo</option>
-                          {imagePresets.map((preset) => (
-                            <option key={preset.path} value={preset.path}>
-                              {preset.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Occasion Selector */}
-                      <div className="flex items-center gap-1.5 bg-card border border-border-accent/40 px-2 py-1.5 rounded-xs">
-                        <Tag className="w-3.5 h-3.5 text-muted-gold" />
-                        <select
-                          onChange={async (e) => {
-                            const newTag = e.target.value;
-                            const toastId = toast.loading(`Updating occasion tag for ${prod.name}...`);
-                            try {
-                              await updateProductCollectionTag(prod.id, newTag);
-                              const updated = await getProducts();
-                              setProducts(updated);
-                              toast.success("Occasion updated successfully!", { id: toastId });
-                            } catch (err: any) {
-                              toast.error(`Occasion update failed: ${err.message}`, { id: toastId });
-                            }
-                          }}
-                          value={prod.collectionTag || ""}
-                          className="text-[9px] uppercase font-sans font-semibold tracking-wider text-secondary-text bg-transparent border-none outline-none cursor-pointer"
-                        >
-                          <option value="">No Occasion</option>
-                          <option value="wedding">Wedding</option>
-                          <option value="festival">Festival</option>
-                          <option value="office-wear">Office Wear</option>
-                          <option value="daily-wear">Daily Wear</option>
-                          <option value="party-wear">Party Wear</option>
-                          <option value="traditional">Traditional</option>
-                          <option value="designer">Designer</option>
-                          <option value="casual">Casual</option>
-                        </select>
-                      </div>
-
-                      {/* Edit Specifications */}
+                    <div className="flex gap-2">
                       <button
                         onClick={() => {
-                          setEditingSpecsProduct(prod);
-                          setEditSpecsData({
-                            fabric: prod.fabric || "",
-                            dimensions: prod.dimensions || "",
-                            garmentCut: prod.garmentCut || "",
-                            artisanOrigin: prod.artisanOrigin || "",
-                            weavingStyle: prod.weavingStyle || "",
-                            craftTime: prod.craftTime || "",
-                            threadCount: prod.threadCount || "",
-                            washingStandard: prod.washingStandard || "",
-                          });
+                          setEditingReviewId(rev.id);
+                          setNewReviewAuthor(rev.author);
+                          setNewReviewText(rev.text);
+                          setNewReviewRating(String(rev.rating));
                         }}
-                        className="p-2 border border-border-accent/40 hover:border-muted-gold hover:text-muted-gold rounded-xs transition-colors cursor-pointer text-secondary-text"
-                        title="Edit specifications"
+                        className="text-muted-gold hover:text-forest-green p-1.5 hover:bg-card border border-transparent hover:border-border-accent/45 rounded-md transition-colors cursor-pointer"
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
-
-                      {/* Delete */}
                       <button
-                        onClick={() => handleDeleteProduct(prod.id, prod.name)}
-                        className="p-2 border border-border-accent/40 hover:border-red-700 hover:text-red-700 rounded-xs transition-colors cursor-pointer text-secondary-text"
-                        title="Remove product"
+                        onClick={() => handleDeleteReview(rev.id)}
+                        className="text-red-700 hover:text-red-900 p-1.5 hover:bg-card border border-transparent hover:border-border-accent/45 rounded-md transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
-
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-20">
-                  <ShoppingBag className="w-10 h-10 text-border-accent/60 mx-auto mb-4 stroke-[1.25]" />
-                  <p className="font-serif text-base text-secondary-text italic">No products in store catalog</p>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
-
-            {/* Future: Cloudinary file uploads & Supabase DB deletes */}
           </FadeIn>
-
-          </div>
         )}
 
-        {/* Orders Log Tab Content */}
-        {activeTab === "orders" && (
-          <FadeIn className="bg-card border border-border-accent/40 p-8 rounded-[2rem] shadow-xs w-full">
-            <div className="flex justify-between items-center mb-8">
-              <h2 className="font-serif text-xl text-primary-text flex items-center gap-2">
-                <ShoppingBag className="w-5 h-5 text-muted-gold" />
-                Boutique Orders Log ({orders.length})
-              </h2>
-              <button
-                onClick={fetchOrders}
-                className="px-3 py-1.5 border border-border-accent/60 hover:border-muted-gold hover:text-muted-gold text-[9px] uppercase tracking-wider font-medium rounded-xs transition-colors cursor-pointer"
-              >
-                Refresh Orders
-              </button>
+        {/* 4. FAQs CMS */}
+        {activeTab === "faqs" && (
+          <FadeIn className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            {/* Form */}
+            <div className="lg:col-span-1 bg-card border border-border-accent/40 p-6 rounded-2xl shadow-xs">
+              <h3 className="font-serif text-lg text-primary-text mb-5 flex items-center gap-2 border-b border-border-accent/20 pb-3">
+                <HelpCircle className="w-5 h-5 text-muted-gold" />
+                {editingFaqId ? "Edit FAQ" : "Create FAQ"}
+              </h3>
+              <form onSubmit={handleSaveFaq} className="flex flex-col gap-4 text-xs text-secondary-text">
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-semibold">Category</label>
+                  <select
+                    value={newFaqCategory}
+                    onChange={(e) => setNewFaqCategory(e.target.value)}
+                    className="bg-primary-bg border border-border-accent p-2.5 rounded-lg text-primary-text"
+                  >
+                    <option value="Orders">Orders</option>
+                    <option value="Shipping">Shipping</option>
+                    <option value="Customization">Customization</option>
+                    <option value="Returns">Returns</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-semibold">FAQ Question</label>
+                  <input
+                    type="text"
+                    required
+                    value={newFaqQuestion}
+                    onChange={(e) => setNewFaqQuestion(e.target.value)}
+                    placeholder="e.g. Do you customize sizing?"
+                    className="bg-primary-bg border border-border-accent p-2.5 rounded-lg text-primary-text"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-semibold">FAQ Answer</label>
+                  <textarea
+                    required
+                    rows={4}
+                    value={newFaqAnswer}
+                    onChange={(e) => setNewFaqAnswer(e.target.value)}
+                    placeholder="Yes, all designs can be customized..."
+                    className="bg-primary-bg border border-border-accent p-2.5 rounded-lg text-primary-text outline-none resize-none"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button type="submit" className="flex-1 bg-forest-green text-primary-bg py-3 text-[10px] uppercase font-bold tracking-widest rounded-lg cursor-pointer">
+                    Save FAQ
+                  </button>
+                  {editingFaqId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingFaqId(null);
+                        setNewFaqQuestion("");
+                        setNewFaqAnswer("");
+                        setNewFaqCategory("Orders");
+                      }}
+                      className="bg-card text-secondary-text border border-border-accent/40 py-3 text-[10px] uppercase font-bold tracking-widest px-4 rounded-lg cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
             </div>
 
-            {isLoadingOrders ? (
-              <div className="py-20 flex flex-col items-center justify-center text-center gap-4">
-                <div className="w-10 h-10 rounded-full border-2 border-muted-gold border-t-transparent animate-spin" />
-                <span className="text-xs text-secondary-text font-light">Loading boutique transactions...</span>
-              </div>
-            ) : orders.length > 0 ? (
-              <div className="flex flex-col gap-6">
-                {orders.map((order) => (
-                  <div
-                    key={order.id}
-                    className="border border-border-accent/45 rounded-2xl bg-primary-bg/15 hover:border-muted-gold/45 transition-colors p-6 flex flex-col gap-4 text-xs"
-                  >
-                    {/* Order Header Row */}
-                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border-accent/25 pb-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="font-mono text-[10px] text-secondary-text font-semibold uppercase">
-                          Order ID: <span className="text-primary-text">#RL-{order.id.slice(0, 8).toUpperCase()}</span>
-                        </span>
-                        <span className="text-[10px] text-secondary-text font-light">
-                          Placed on {new Date(order.created_at).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          })}
-                        </span>
+            {/* List */}
+            <div className="lg:col-span-2 bg-card border border-border-accent/40 p-6 rounded-2xl shadow-xs">
+              <h3 className="font-serif text-lg text-primary-text mb-5 flex items-center gap-2 border-b border-border-accent/20 pb-3">
+                <Sliders className="w-5 h-5 text-muted-gold" />
+                Frequently Asked Questions Registry
+              </h3>
+              <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto no-scrollbar">
+                {faqs.map((faq) => (
+                  <div key={faq.id} className="p-4 border border-border-accent/30 rounded-xl bg-primary-bg flex justify-between items-start gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[8px] bg-chocolate/15 text-chocolate px-2 py-0.5 rounded-sm uppercase tracking-wider font-bold">{faq.category}</span>
+                        <h4 className="font-sans font-bold text-xs text-primary-text">{faq.question}</h4>
                       </div>
-
-                      <div className="flex items-center gap-4">
-                        <div className="flex flex-col items-end">
-                          <span className="text-[9px] uppercase tracking-wider text-secondary-text">Amount Paid</span>
-                          <span className="font-sans text-sm font-bold text-chocolate">₹{order.total_amount.toLocaleString("en-IN")}</span>
-                        </div>
-                        <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] uppercase tracking-wider font-bold">
-                          Paid via Razorpay
-                        </span>
-                      </div>
+                      <p className="font-sans text-[11px] text-secondary-text font-light leading-relaxed">{faq.answer}</p>
                     </div>
-
-                    {/* Customer Details Row */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-2 border-b border-border-accent/25 pb-4">
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-[9px] uppercase tracking-wider font-semibold text-secondary-text">Customer</span>
-                        <span className="font-serif text-sm font-medium text-primary-text">{order.customer_name}</span>
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-[9px] uppercase tracking-wider font-semibold text-secondary-text">Contact Number</span>
-                        <span className="font-sans text-primary-text">{order.customer_phone}</span>
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <span className="text-[9px] uppercase tracking-wider font-semibold text-secondary-text">Shipping Address</span>
-                        <p className="text-primary-text leading-relaxed font-light">
-                          {order.shipping_address}, {order.city} - {order.pincode}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Line Items Row */}
-                    <div className="flex flex-col gap-3">
-                      <span className="text-[9px] uppercase tracking-wider font-semibold text-secondary-text">Items Ordered</span>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {order.order_items.map((item: any) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center gap-4 bg-card border border-border-accent/20 p-3 rounded-xl"
-                          >
-                            <div className="w-10 h-12 bg-primary-bg rounded-xs overflow-hidden relative flex-shrink-0">
-                              <img
-                                src={item.products?.image_url || "/images/hero-fallback.jpg"}
-                                alt={item.products?.name || "Product"}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="flex flex-col overflow-hidden">
-                              <span className="font-serif text-xs text-primary-text font-medium truncate">
-                                {item.products?.name || "Deleted Product"}
-                              </span>
-                              <span className="text-[10px] text-secondary-text mt-0.5 font-light">
-                                Qty: {item.quantity} • ₹{item.price.toLocaleString("en-IN")} each
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Shipping Integration Controls */}
-                    <div className="flex justify-between items-center border-t border-border-accent/25 pt-4 mt-2 w-full">
-                      {order.shipping_status === "shipped" ? (
-                        <div className="flex flex-wrap items-center gap-4 justify-between w-full">
-                          <div className="flex flex-col gap-0.5 text-left">
-                            <span className="text-[9px] uppercase tracking-wider font-semibold text-secondary-text">Courier Partner</span>
-                            <span className="font-sans text-primary-text font-medium">{order.shiprocket_courier_name}</span>
-                          </div>
-                          <div className="flex flex-col gap-0.5 text-left">
-                            <span className="text-[9px] uppercase tracking-wider font-semibold text-secondary-text">AWB Tracking Code</span>
-                            <span className="font-mono text-primary-text font-semibold">{order.shiprocket_awb_code}</span>
-                          </div>
-                          <a
-                            href={order.shiprocket_tracking_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-primary-bg border border-border-accent/40 hover:border-muted-gold text-secondary-text hover:text-primary-text px-4 py-2 text-[9px] font-sans font-semibold tracking-wider uppercase rounded-full transition-colors cursor-pointer"
-                          >
-                            Track Shipment
-                          </a>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex flex-col gap-0.5 text-left">
-                            <span className="text-[9px] uppercase tracking-wider font-semibold text-secondary-text">Shipping Status</span>
-                            <span className="font-sans text-amber-700 font-medium capitalize">{order.shipping_status || "Processing"}</span>
-                          </div>
-                          <button
-                            onClick={() => handleShipOrder(order.id)}
-                            className="bg-forest-green hover:bg-[#1a2b24] text-primary-bg px-5 py-2.5 text-[9px] font-sans font-semibold tracking-wider uppercase rounded-full border border-muted-gold/20 hover:border-muted-gold transition-all cursor-pointer flex items-center gap-2"
-                          >
-                            <FolderHeart className="w-3.5 h-3.5 text-muted-gold" />
-                            Process with Shiprocket
-                          </button>
-                        </>
-                      )}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingFaqId(faq.id);
+                          setNewFaqCategory(faq.category);
+                          setNewFaqQuestion(faq.question);
+                          setNewFaqAnswer(faq.answer);
+                        }}
+                        className="text-muted-gold hover:text-forest-green p-1.5 hover:bg-card border border-transparent hover:border-border-accent/45 rounded-md transition-colors cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteFaq(faq.id)}
+                        className="text-red-700 hover:text-red-900 p-1.5 hover:bg-card border border-transparent hover:border-border-accent/45 rounded-md transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
+            </div>
+          </FadeIn>
+        )}
+
+        {/* 5. SITE CONTENT SETTINGS (SITE COPY) */}
+        {activeTab === "site_copy" && <HomepageView />}
+
+        {/* 6. ORDERS LOG TAB */}
+        {activeTab === "orders" && (
+          <FadeIn className="bg-card border border-border-accent/40 p-8 rounded-2xl shadow-xs">
+            <h2 className="font-serif text-xl text-primary-text mb-6 flex items-center gap-2 border-b border-border-accent/20 pb-3">
+              <FolderHeart className="w-5 h-5 text-muted-gold" />
+              Incoming Boutique Orders Log
+            </h2>
+
+            {isLoadingOrders ? (
+              <div className="py-20 text-center select-none font-serif italic text-secondary-text animate-pulse">Querying database transaction logs...</div>
+            ) : orders.length === 0 ? (
+              <div className="py-20 text-center font-serif italic text-secondary-text select-none">No client orders placed yet. Seed database using /api/seed first.</div>
             ) : (
-              <div className="py-20 text-center text-secondary-text/75 font-serif italic text-sm border border-dashed border-border-accent/40 rounded-2xl">
-                No orders have been placed yet. Make a checkout using the storefront to see it listed here!
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-border-accent/25 text-secondary-text uppercase tracking-wider font-bold">
+                      <th className="py-3">Order ID</th>
+                      <th className="py-3">Customer Name</th>
+                      <th className="py-3">Contact details</th>
+                      <th className="py-3 text-center">Date</th>
+                      <th className="py-3">Total Cost</th>
+                      <th className="py-3">Payment</th>
+                      <th className="py-3">Logistics</th>
+                      <th className="py-3 text-right">Delivery Fulfillment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((ord) => (
+                      <tr key={ord.id} className="border-b border-border-accent/15 text-primary-text hover:bg-[#FAF8F3]/50 transition-colors">
+                        <td className="py-4 font-mono font-bold text-muted-gold">{ord.id.slice(0, 8)}...</td>
+                        <td className="py-4 font-serif font-medium">{ord.customer_name}</td>
+                        <td className="py-4">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-sans font-bold text-[10px]">{ord.customer_phone}</span>
+                            <span className="text-[9px] text-secondary-text/80">{ord.customer_email || "N/A"}</span>
+                          </div>
+                        </td>
+                        <td className="py-4 text-center text-secondary-text">{new Date(ord.created_at).toLocaleDateString()}</td>
+                        <td className="py-4 font-sans font-bold">₹{Number(ord.total).toLocaleString("en-IN")}</td>
+                        <td className="py-4">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-sans font-bold uppercase tracking-wider border ${
+                            ord.payment_status === "paid" ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : "bg-red-500/10 text-red-700 border-red-500/20"
+                          }`}>
+                            {ord.payment_status}
+                          </span>
+                        </td>
+                        <td className="py-4">
+                          {ord.shiprocket_shipment_id ? (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[9px] bg-forest-green/15 text-forest-green px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-bold w-fit">Shiprocket Active</span>
+                              <span className="text-[8px] text-secondary-text font-mono">ID: {ord.shiprocket_shipment_id}</span>
+                            </div>
+                          ) : (
+                            <span className="text-[8px] bg-secondary-bg text-secondary-text/80 px-1.5 py-0.5 rounded-sm uppercase tracking-wider font-bold">Offline Dispatch</span>
+                          )}
+                        </td>
+                        <td className="py-4 text-right flex justify-end gap-2.5">
+                          {ord.status !== "shipped" && ord.status !== "completed" && !ord.shiprocket_shipment_id && (
+                            <button
+                              onClick={() => handleShipOrder(ord.id)}
+                              className="bg-forest-green hover:bg-[#1a2b24] text-primary-bg px-3.5 py-1.5 text-[8px] font-sans font-bold tracking-wider uppercase rounded-md cursor-pointer border border-muted-gold/25"
+                            >
+                              Dispatch Logistics
+                            </button>
+                          )}
+                          <span className={`px-2.5 py-0.5 rounded-full text-[8px] font-sans font-bold uppercase tracking-wider border ${
+                            ord.status === "completed" || ord.status === "shipped" ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : "bg-amber-500/10 text-amber-700 border-amber-500/20"
+                          }`}>
+                            {ord.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </FadeIn>
         )}
 
-        {/* Communications Log Tab Content */}
+        {/* 7. COMMUNICATIONS TAB */}
         {activeTab === "notifications" && (
-          <FadeIn className="bg-card border border-border-accent/40 p-8 rounded-[2rem] shadow-xs w-full">
-            {/* Tab Header */}
-            <div className="flex justify-between items-center mb-8 border-b border-border-accent/25 pb-4">
-              <h2 className="font-serif text-xl text-primary-text flex items-center gap-2">
-                <Mail className="w-5 h-5 text-muted-gold" />
-                Boutique Communications Log ({totalLogsCount})
-              </h2>
-              <button
-                onClick={fetchLogs}
-                className="px-3 py-1.5 border border-border-accent/60 hover:border-muted-gold hover:text-muted-gold text-[9px] uppercase tracking-wider font-medium rounded-xs transition-colors cursor-pointer"
-              >
-                Refresh Logs
-              </button>
-            </div>
+          <FadeIn className="bg-card border border-border-accent/45 p-8 rounded-2xl shadow-xs">
+            <h2 className="font-serif text-xl text-primary-text mb-4 flex items-center gap-2 border-b border-border-accent/20 pb-3">
+              <Mail className="w-5 h-5 text-muted-gold" />
+              Notifications Log center (Email & SMS dispatches)
+            </h2>
 
-            {/* Counters Grid */}
+            {/* Counters grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-[#FAF8F3]/50 border border-border-accent/30 p-4 rounded-xl text-center">
-                <span className="text-[9px] uppercase tracking-wider text-secondary-text font-semibold">Emails Sent</span>
-                <p className="font-sans text-xl font-bold text-forest-green mt-1">{logCounters.sentEmails}</p>
-              </div>
-              <div className="bg-[#FAF8F3]/50 border border-border-accent/30 p-4 rounded-xl text-center">
-                <span className="text-[9px] uppercase tracking-wider text-secondary-text font-semibold">Emails Failed</span>
-                <p className="font-sans text-xl font-bold text-red-700 mt-1">{logCounters.failedEmails}</p>
-              </div>
-              <div className="bg-[#FAF8F3]/50 border border-border-accent/30 p-4 rounded-xl text-center">
-                <span className="text-[9px] uppercase tracking-wider text-secondary-text font-semibold">SMS Sent</span>
-                <p className="font-sans text-xl font-bold text-forest-green mt-1">{logCounters.sentSms}</p>
-              </div>
-              <div className="bg-[#FAF8F3]/50 border border-border-accent/30 p-4 rounded-xl text-center">
-                <span className="text-[9px] uppercase tracking-wider text-secondary-text font-semibold">SMS Failed</span>
-                <p className="font-sans text-xl font-bold text-red-700 mt-1">{logCounters.failedSms}</p>
-              </div>
+              {[
+                { label: "Emails Sent", val: logCounters.sentEmails, color: "text-emerald-700 border-emerald-500/20 bg-emerald-500/5" },
+                { label: "Emails Failed", val: logCounters.failedEmails, color: "text-red-700 border-red-500/20 bg-red-500/5" },
+                { label: "SMS Sent", val: logCounters.sentSms, color: "text-emerald-700 border-emerald-500/20 bg-emerald-500/5" },
+                { label: "SMS Failed", val: logCounters.failedSms, color: "text-red-700 border-red-500/20 bg-red-500/5" }
+              ].map((cnt, idx) => (
+                <div key={idx} className={`p-4 border rounded-xl flex flex-col items-center text-center ${cnt.color}`}>
+                  <span className="text-[8px] uppercase tracking-wider text-secondary-text/80 font-bold mb-1">{cnt.label}</span>
+                  <span className="text-lg font-bold">{cnt.val}</span>
+                </div>
+              ))}
             </div>
 
-            {/* Search & Filters */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6 text-xs items-center justify-between">
-              {/* Search bar */}
-              <div className="w-full md:w-1/3 relative">
-                <input
-                  type="text"
-                  placeholder="Search recipient or order ID..."
-                  value={logsSearchInput}
-                  onChange={(e) => setLogsSearchInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      setSearchTerm(logsSearchInput);
-                      setCurrentLogsPage(1);
-                    }
-                  }}
-                  className="w-full pl-9 pr-4 py-2.5 bg-primary-bg/50 border border-border-accent/40 rounded-full text-xs text-primary-text focus:outline-none focus:border-muted-gold"
-                />
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-secondary-text" />
-              </div>
-
-              {/* Filters */}
-              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
-                <select
-                  value={filterType}
-                  onChange={(e) => {
-                    setFilterType(e.target.value as any);
-                    setCurrentLogsPage(1);
-                  }}
-                  className="bg-primary-bg/50 border border-border-accent/45 px-3 py-2.5 rounded-full text-xs text-primary-text outline-none cursor-pointer focus:border-muted-gold"
-                >
+            {/* Search filter panel */}
+            <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-6 text-xs text-secondary-text">
+              <div className="flex gap-2">
+                <select value={filterType} onChange={(e) => setFilterType(e.target.value as any)} className="bg-primary-bg border border-border-accent/40 p-2 rounded-lg">
                   <option value="all">All Channels</option>
                   <option value="email">Emails Only</option>
                   <option value="sms">SMS Only</option>
                 </select>
-
-                <select
-                  value={filterStatus}
-                  onChange={(e) => {
-                    setFilterStatus(e.target.value as any);
-                    setCurrentLogsPage(1);
-                  }}
-                  className="bg-primary-bg/50 border border-border-accent/45 px-3 py-2.5 rounded-full text-xs text-primary-text outline-none cursor-pointer focus:border-muted-gold"
-                >
+                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)} className="bg-primary-bg border border-border-accent/40 p-2 rounded-lg">
                   <option value="all">All Statuses</option>
-                  <option value="sent">Sent Success</option>
+                  <option value="sent">Sent Successfully</option>
                   <option value="failed">Failed Delivery</option>
-                  <option value="pending">Pending Queue</option>
+                  <option value="pending">Pending</option>
                 </select>
+              </div>
 
-                <button
-                  onClick={() => {
-                    setSearchTerm(logsSearchInput);
-                    setCurrentLogsPage(1);
-                  }}
-                  className="bg-forest-green hover:bg-[#1a2b24] text-primary-bg px-5 py-2.5 text-[9px] uppercase tracking-wider font-bold rounded-full cursor-pointer border border-muted-gold/25 hover:border-muted-gold transition-colors"
-                >
-                  Apply Search
-                </button>
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-secondary-text/60" />
+                <input
+                  type="text"
+                  value={logsSearchInput}
+                  onChange={(e) => setLogsSearchInput(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && setSearchTerm(logsSearchInput)}
+                  placeholder="Recipient search (Press Enter)..."
+                  className="w-full pl-9 pr-4 py-2 bg-primary-bg border border-border-accent/40 rounded-lg outline-none focus:border-muted-gold"
+                />
               </div>
             </div>
 
             {/* Logs Table */}
             {isLoadingLogs ? (
-              <div className="py-20 flex flex-col items-center justify-center text-center gap-4">
-                <div className="w-10 h-10 rounded-full border-2 border-muted-gold border-t-transparent animate-spin" />
-                <span className="text-xs text-secondary-text font-light">Loading communication history...</span>
-              </div>
-            ) : logs.length > 0 ? (
-              <div className="flex flex-col gap-4">
-                <div className="w-full overflow-x-auto border border-border-accent/30 rounded-xl">
-                  <table className="w-full border-collapse text-left text-xs text-secondary-text">
-                    <thead>
-                      <tr className="bg-[#FAF8F3] border-b border-border-accent/30 text-[9px] uppercase tracking-wider font-bold text-primary-text">
-                        <th className="p-4">Channel</th>
-                        <th className="p-4">Recipient</th>
-                        <th className="p-4">Subject/Content</th>
-                        <th className="p-4">Order ID</th>
-                        <th className="p-4">Sent At</th>
-                        <th className="p-4">Status</th>
-                        <th className="p-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {logs.map((log) => {
-                        const isFailed = log.status === "failed";
-                        const isEmail = log.notificationType === "email";
-                        const formattedDate = new Date(log.created_at).toLocaleString("en-IN", {
-                          day: "2-digit",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        });
-
-                        return (
-                          <tr key={`${log.notificationType}-${log.id}`} className="border-b border-border-accent/20 last:border-none hover:bg-[#FAF8F3]/30 transition-colors">
-                            {/* Type */}
-                            <td className="p-4">
-                              <span className="flex items-center gap-1.5 font-bold uppercase tracking-wider text-[8px] text-primary-text">
-                                {isEmail ? (
-                                  <>
-                                    <Mail className="w-3.5 h-3.5 text-muted-gold" />
-                                    Email
-                                  </>
-                                ) : (
-                                  <>
-                                    <Phone className="w-3.5 h-3.5 text-forest-green" />
-                                    SMS
-                                  </>
-                                )}
-                              </span>
-                            </td>
-
-                            {/* Recipient */}
-                            <td className="p-4 font-mono font-medium text-primary-text select-text truncate max-w-[130px]">
-                              {isEmail ? log.recipient_email : log.recipient_phone}
-                            </td>
-
-                            {/* Content Preview */}
-                            <td className="p-4 font-light max-w-[200px] truncate select-text" title={isEmail ? log.subject : log.body}>
-                              {isEmail ? (
-                                <div>
-                                  <span className="font-semibold text-primary-text block">{log.subject}</span>
-                                  <span className="text-[9px] text-secondary-text uppercase tracking-wider">{log.type}</span>
-                                </div>
-                              ) : (
-                                log.body
-                              )}
-                              {isFailed && log.error_message && (
-                                <p className="text-[9px] text-red-700 italic font-medium mt-1 leading-normal">
-                                  Error: {log.error_message}
-                                </p>
-                              )}
-                            </td>
-
-                            {/* Order ID */}
-                            <td className="p-4 font-mono">
-                              {log.order_id ? `#RL-${log.order_id.slice(0, 8).toUpperCase()}` : "N/A"}
-                            </td>
-
-                            {/* Sent At */}
-                            <td className="p-4 font-light text-[10px] text-secondary-text/80">{formattedDate}</td>
-
-                            {/* Status */}
-                            <td className="p-4">
-                              <span
-                                className={`px-2.5 py-1 rounded-full text-[8px] uppercase tracking-wider font-bold border ${
-                                  log.status === "sent"
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                                    : log.status === "failed"
-                                    ? "bg-red-50 text-red-700 border-red-100"
-                                    : "bg-amber-50 text-amber-700 border-amber-100"
-                                }`}
-                              >
-                                {log.status}
-                              </span>
-                            </td>
-
-                            {/* Actions */}
-                            <td className="p-4 text-right">
-                              {isFailed ? (
-                                <button
-                                  onClick={() => handleRetryNotification(log.id, log.notificationType)}
-                                  className="px-2.5 py-1 border border-red-200 hover:border-red-700 text-red-700 hover:bg-red-50/50 text-[9px] uppercase tracking-wider font-semibold rounded-xs transition-all cursor-pointer flex items-center gap-1 ml-auto font-sans"
-                                >
-                                  <RefreshCw className="w-2.5 h-2.5 animate-spin-hover" />
-                                  Retry
-                                </button>
-                              ) : (
-                                <span className="text-[9px] italic text-secondary-text/40">Delivered</span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Pagination Controls */}
-                <div className="flex justify-between items-center border-t border-border-accent/20 pt-4 mt-2">
-                  <span className="text-[10px] text-secondary-text font-light">
-                    Showing {logs.length} of {totalLogsCount} logs
-                  </span>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentLogsPage(p => Math.max(p - 1, 1))}
-                      disabled={currentLogsPage === 1}
-                      className="px-3 py-1.5 border border-border-accent/40 rounded-xs text-[10px] uppercase font-bold disabled:opacity-40 transition-opacity cursor-pointer hover:border-primary-text"
-                    >
-                      Prev
-                    </button>
-                    <span className="font-mono text-xs font-bold text-primary-text px-2">{currentLogsPage}</span>
-                    <button
-                      onClick={() => setCurrentLogsPage(p => (p * 10 < totalLogsCount ? p + 1 : p))}
-                      disabled={currentLogsPage * 10 >= totalLogsCount}
-                      className="px-3 py-1.5 border border-border-accent/40 rounded-xs text-[10px] uppercase font-bold disabled:opacity-40 transition-opacity cursor-pointer hover:border-primary-text"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <div className="py-20 text-center select-none font-serif italic text-secondary-text animate-pulse">Running diagnostics logs query...</div>
+            ) : logs.length === 0 ? (
+              <div className="py-20 text-center font-serif italic text-secondary-text select-none">No notifications dispatched. Test checkout to trigger logs.</div>
             ) : (
-              <div className="py-20 text-center text-secondary-text/75 font-serif italic text-sm border border-dashed border-border-accent/40 rounded-2xl">
-                No notification logs found matching the filters.
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-border-accent/25 text-secondary-text uppercase tracking-wider font-bold">
+                      <th className="py-3">Channel</th>
+                      <th className="py-3">Recipient</th>
+                      <th className="py-3">Notification Type</th>
+                      <th className="py-3">Message Snippet</th>
+                      <th className="py-3">Date</th>
+                      <th className="py-3">Status</th>
+                      <th className="py-3 text-right">Logistics Retry</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {logs.map((log) => (
+                      <tr key={log.id} className="border-b border-border-accent/15 text-primary-text hover:bg-[#FAF8F3]/50 transition-colors">
+                        <td className="py-4 uppercase tracking-widest font-bold text-[8px] text-muted-gold">{log.channel_type}</td>
+                        <td className="py-4 font-sans font-bold">{log.recipient}</td>
+                        <td className="py-4 uppercase tracking-wider text-[8px] text-secondary-text">{log.type}</td>
+                        <td className="py-4 text-secondary-text font-light max-w-[200px] truncate" title={log.subject || log.body}>{log.subject || log.body}</td>
+                        <td className="py-4 text-secondary-text font-light">{new Date(log.created_at).toLocaleString()}</td>
+                        <td className="py-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[8px] font-bold uppercase ${
+                            log.status === "sent" ? "bg-emerald-500/10 text-emerald-700" : "bg-red-500/10 text-red-700"
+                          }`}>
+                            {log.status}
+                          </span>
+                        </td>
+                        <td className="py-4 text-right flex justify-end gap-2">
+                          {log.status === "failed" && (
+                            <button
+                              onClick={() => handleRetryNotification(log.id, log.channel_type)}
+                              className="text-forest-green hover:text-primary-bg hover:bg-forest-green p-1.5 border border-border-accent/40 rounded-md transition-colors cursor-pointer"
+                              title="Resend Dispatch"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </FadeIn>
         )}
 
+        {/* 8. SYSTEM SETTINGS TAB */}
+        {activeTab === "settings" && <SettingsView />}
+
       </div>
 
-      {/* Edit Specifications Modal overlay */}
+      {/* Specifications Editor Modal */}
       {editingSpecsProduct && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#FFFDF9] border border-border-accent/40 w-full max-w-2xl rounded-2xl shadow-luxury overflow-hidden flex flex-col max-h-[85vh] animate-fadeIn text-xs text-secondary-text font-sans">
-            {/* Header */}
-            <div className="p-6 border-b border-border-accent/25 bg-card flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <Sliders className="w-5 h-5 text-muted-gold" />
-                <div>
-                  <h3 className="font-serif text-base text-primary-text font-semibold text-slate-800">Edit Specifications</h3>
-                  <p className="text-[10px] text-secondary-text/80 uppercase tracking-wider font-light mt-0.5">{editingSpecsProduct.name}</p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-6">
+          <FadeIn className="bg-card border border-border-accent/40 p-8 rounded-2xl max-w-xl w-full max-h-[85vh] overflow-y-auto no-scrollbar shadow-luxury">
+            <h3 className="font-serif text-xl text-primary-text mb-2">Edit Specifications</h3>
+            <p className="text-[10px] text-muted-gold font-bold uppercase tracking-wider font-sans mb-6">Product: {editingSpecsProduct.name}</p>
+            
+            <form onSubmit={handleUpdateSpecs} className="flex flex-col gap-4 text-xs text-secondary-text">
+              {[
+                { label: "Fabric details", val: editSpecsData.fabric, key: "fabric", placeholder: "e.g. Handloom Silk" },
+                { label: "Product Dimensions", val: editSpecsData.dimensions, key: "dimensions", placeholder: "e.g. length: 5.5m" },
+                { label: "Garment Silhouette Cut", val: editSpecsData.garmentCut, key: "garmentCut", placeholder: "e.g. straight cut" },
+                { label: "Artisan Loom Origin", val: editSpecsData.artisanOrigin, key: "artisanOrigin", placeholder: "e.g. Jaipur, Rajasthan" },
+                { label: "Weaving Craft Style", val: editSpecsData.weavingStyle, key: "weavingStyle", placeholder: "e.g. block printed" },
+                { label: "Handcraft Time Spent", val: editSpecsData.craftTime, key: "craftTime", placeholder: "e.g. 10 hours" },
+                { label: "Loom Thread Count", val: editSpecsData.threadCount, key: "threadCount", placeholder: "e.g. 80s count" },
+                { label: "Washing & Care Guideline", val: editSpecsData.washingStandard, key: "washingStandard", placeholder: "e.g. Dry Clean Only" }
+              ].map((f) => (
+                <div key={f.key} className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-semibold text-secondary-text">{f.label}</label>
+                  <input
+                    type="text"
+                    value={f.val}
+                    onChange={(e) => setEditSpecsData(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    placeholder={f.placeholder}
+                    className="bg-primary-bg border border-border-accent p-2.5 rounded-lg text-primary-text outline-none"
+                  />
                 </div>
+              ))}
+
+              <div className="flex gap-4 mt-4">
+                <button type="submit" className="flex-1 bg-forest-green text-primary-bg py-3 text-[10px] uppercase font-bold tracking-widest rounded-lg cursor-pointer">
+                  Save Changes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingSpecsProduct(null)}
+                  className="bg-card text-secondary-text border border-border-accent/40 py-3 text-[10px] uppercase font-bold tracking-widest px-6 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
               </div>
-              <button
-                onClick={() => setEditingSpecsProduct(null)}
-                className="p-1.5 text-primary-text hover:text-muted-gold transition-colors rounded-full hover:bg-secondary-bg/20 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Inputs Form */}
-            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 no-scrollbar">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Fabric Type</label>
-                  <input
-                    type="text"
-                    value={editSpecsData.fabric}
-                    onChange={(e) => setEditSpecsData({ ...editSpecsData, fabric: e.target.value })}
-                    placeholder="e.g. Premium Handloom Kora"
-                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Dimensions</label>
-                  <input
-                    type="text"
-                    value={editSpecsData.dimensions}
-                    onChange={(e) => setEditSpecsData({ ...editSpecsData, dimensions: e.target.value })}
-                    placeholder="e.g. 5.5m Standard Saree"
-                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Garment Cut</label>
-                  <input
-                    type="text"
-                    value={editSpecsData.garmentCut}
-                    onChange={(e) => setEditSpecsData({ ...editSpecsData, garmentCut: e.target.value })}
-                    placeholder="e.g. Unstitched Heritage Saree"
-                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Artisan Origin</label>
-                  <input
-                    type="text"
-                    value={editSpecsData.artisanOrigin}
-                    onChange={(e) => setEditSpecsData({ ...editSpecsData, artisanOrigin: e.target.value })}
-                    placeholder="e.g. Varanasi, India"
-                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Weaving Style</label>
-                  <input
-                    type="text"
-                    value={editSpecsData.weavingStyle}
-                    onChange={(e) => setEditSpecsData({ ...editSpecsData, weavingStyle: e.target.value })}
-                    placeholder="e.g. Handloom Zari Weave"
-                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Estimated Craft Time</label>
-                  <input
-                    type="text"
-                    value={editSpecsData.craftTime}
-                    onChange={(e) => setEditSpecsData({ ...editSpecsData, craftTime: e.target.value })}
-                    placeholder="e.g. 72 Hours"
-                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Thread Count</label>
-                  <input
-                    type="text"
-                    value={editSpecsData.threadCount}
-                    onChange={(e) => setEditSpecsData({ ...editSpecsData, threadCount: e.target.value })}
-                    placeholder="e.g. 120s Double Warp"
-                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
-                  />
-                </div>
-
-                <div className="flex flex-col gap-1.5">
-                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Garment Care</label>
-                  <input
-                    type="text"
-                    value={editSpecsData.washingStandard}
-                    onChange={(e) => setEditSpecsData({ ...editSpecsData, washingStandard: e.target.value })}
-                    placeholder="e.g. Dry Clean Only"
-                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Footer actions */}
-            <div className="p-6 bg-card border-t border-border-accent/25 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setEditingSpecsProduct(null)}
-                className="px-5 py-3 border border-border-accent/45 hover:border-primary-text text-[10px] uppercase font-bold tracking-wider rounded-xs cursor-pointer transition-colors bg-transparent"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  const toastId = toast.loading("Saving updated specifications...");
-                  try {
-                    await updateProductSpecs(editingSpecsProduct.id, editSpecsData);
-                    const updated = await getProducts();
-                    setProducts(updated);
-                    setEditingSpecsProduct(null);
-                    toast.success("Specifications updated successfully!", { id: toastId });
-                  } catch (err: any) {
-                    toast.error(`Update failed: ${err.message}`, { id: toastId });
-                  }
-                }}
-                className="px-6 py-3 bg-forest-green hover:bg-[#1a2b24] text-primary-bg text-[10px] uppercase font-bold tracking-wider rounded-xs border border-muted-gold/25 hover:border-muted-gold cursor-pointer transition-all shadow-xs"
-              >
-                Save Specifications
-              </button>
-            </div>
-          </div>
+            </form>
+          </FadeIn>
         </div>
       )}
-
     </div>
   );
 }

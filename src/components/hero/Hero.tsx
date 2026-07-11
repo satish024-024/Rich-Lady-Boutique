@@ -1,17 +1,38 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { ArrowRight, Play, MessageCircle } from "lucide-react";
 import { heroData } from "@/data/hero";
 
 export function Hero() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [heading, setHeading] = useState(heroData.heading);
+  const [subheading, setSubheading] = useState(heroData.subheading);
+  const [whatsappLink, setWhatsappLink] = useState("https://wa.me/919030443306");
   
   // Parallax Scroll & opacity calculations
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 500], [0, 150]);
   const opacity = useTransform(scrollY, [0, 400], [1, 0]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("rich-lady-site-copy");
+    if (saved) {
+      const copy = JSON.parse(saved);
+      if (copy.heroHeading) setHeading(copy.heroHeading);
+      if (copy.heroSubheading) setSubheading(copy.heroSubheading);
+      if (copy.whatsappLink) setWhatsappLink(copy.whatsappLink);
+    }
+    
+    import("@/utils/services/settings").then((module) => {
+      module.getSiteSettings("homepage_hero").then((data) => {
+        if (data.heroHeading) setHeading(data.heroHeading);
+        if (data.heroSubheading) setSubheading(data.heroSubheading);
+        if (data.whatsappLink) setWhatsappLink(data.whatsappLink);
+      });
+    });
+  }, []);
 
   const handleExploreClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -22,7 +43,7 @@ export function Hero() {
   };
 
   const handleWhatsAppClick = () => {
-    window.open(heroData.secondaryCtaLink, "_blank");
+    window.open(whatsappLink, "_blank");
   };
 
   return (
@@ -76,7 +97,7 @@ export function Hero() {
 
           {/* Big Serif Heading */}
           <h1 className="font-serif text-4xl md:text-6xl lg:text-7xl text-white leading-[1.1] mb-6 font-normal drop-shadow-md">
-            {heroData.heading}
+            {heading}
           </h1>
 
           {/* Ornament Hairline Divider */}
@@ -84,7 +105,7 @@ export function Hero() {
 
           {/* Subheading text */}
           <p className="font-sans text-xs md:text-sm text-white/90 leading-relaxed mb-10 max-w-lg font-light tracking-wide drop-shadow-xs">
-            {heroData.subheading}
+            {subheading}
           </p>
 
           {/* CTA Buttons */}

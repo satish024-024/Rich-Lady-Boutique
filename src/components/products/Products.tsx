@@ -29,14 +29,20 @@ function ProductsContent() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("All");
+  const [categoriesList, setCategoriesList] = useState<string[]>(["All"]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const categoryQuery = searchParams.get("category");
 
-  // Load all products
+  // Load all products and categories
   useEffect(() => {
     getProducts().then((all) => {
       setAllProducts(all);
+    });
+    import("@/utils/db").then((db) => {
+      db.getCategories().then((cats) => {
+        setCategoriesList(["All", ...cats.map(c => c.title)]);
+      });
     });
   }, []);
 
@@ -113,7 +119,7 @@ function ProductsContent() {
 
         {/* Category Filter Tabs Bar */}
         <FadeIn className="w-full flex gap-3 overflow-x-auto no-scrollbar pb-4 mb-8 border-b border-border-accent/15">
-          {["All", "Sarees", "Kurtis", "Lehengas", "Gowns", "Western Wear", "Kids Wear"].map((cat) => (
+          {categoriesList.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}

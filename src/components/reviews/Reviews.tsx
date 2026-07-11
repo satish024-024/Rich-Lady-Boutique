@@ -1,11 +1,21 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Quote } from "lucide-react";
-import { reviewsData } from "@/data/reviews";
+import { reviewsData as initialReviews } from "@/data/reviews";
+import { Review } from "@/types/review";
 import { FadeIn } from "@/components/motion/FadeIn";
 
 export function Reviews() {
+  const [reviews, setReviews] = useState<Review[]>(initialReviews);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("rich-lady-reviews");
+    if (saved) {
+      setReviews(JSON.parse(saved));
+    }
+  }, []);
+
   return (
     <section
       className="w-full py-20 bg-primary-bg overflow-hidden select-none border-b border-border-accent/35"
@@ -28,7 +38,7 @@ export function Reviews() {
 
         {/* Handcrafted testimonial grid with arched parchment cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-          {reviewsData.map((rev, idx) => (
+          {reviews.map((rev, idx) => (
             <FadeIn
               key={rev.id}
               delay={idx * 0.05}
