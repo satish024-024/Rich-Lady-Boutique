@@ -165,7 +165,7 @@ export default function AdminPage() {
     }
   }, [activeTab, currentLogsPage, filterType, filterStatus, searchTerm]);
 
-  const categories = ["Sarees", "Kurtis", "Dress Materials", "Lehengas", "Gowns", "Accessories"];
+  const categories = ["Sarees", "Kurtis", "Lehengas", "Gowns", "Western Wear", "Kids Wear"];
 
   // Preloaded boutique stock images for easy selection in the demo
   const imagePresets = [
@@ -173,12 +173,12 @@ export default function AdminPage() {
     { label: "Saree Details", path: "/images/prod_silk_saree.jpg" },
     { label: "Kurti Embroidered", path: "/images/cat_kurtis.jpg" },
     { label: "Kurti Yellow", path: "/images/prod_anarkali_kurti.jpg" },
-    { label: "Dress Materials Stack", path: "/images/cat_dress_materials.jpg" },
-    { label: "Dress Materials Floral", path: "/images/prod_suit_set.jpg" },
     { label: "Lehenga Heavy", path: "/images/cat_lehengas.jpg" },
-    { label: "Gown Fusion Green", path: "/images/cat_gowns.jpg" },
-    { label: "Accessories Kundan Jewelry", path: "/images/cat_accessories.jpg" },
-    { label: "New Arrivals Hangers", path: "/images/cat_new_arrivals.jpg" }
+    { label: "Lehenga Velvet Maroon", path: "/images/prod_velvet_lehenga.jpg" },
+    { label: "Gown Emerald Organza", path: "/images/prod_party_gown.jpg" },
+    { label: "Western Wear Dress", path: "/images/cat_western.jpg" },
+    { label: "Kids Wear Traditional", path: "/images/cat_kids.jpg" },
+    { label: "Kids Sherwani Gold", path: "/images/prod_kids_sherwani.jpg" }
   ];
 
   useEffect(() => {
