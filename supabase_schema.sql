@@ -89,3 +89,37 @@ BEGIN
         ALTER TABLE public.orders ADD COLUMN customer_email TEXT;
     END IF;
 END $$;
+
+-- 7. Users Table (Firebase Phone Auth integrated)
+CREATE TABLE IF NOT EXISTS public.users (
+    id TEXT PRIMARY KEY, -- Firebase UID
+    phone TEXT NOT NULL UNIQUE,
+    name TEXT,
+    email TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Index for searching users by phone
+CREATE INDEX IF NOT EXISTS idx_users_phone ON public.users(phone);
+
+-- 8. Alter products table to support side profile images
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS side_profile1_url TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS side_profile2_url TEXT;
+
+-- 9. Alter products table to support occasion collection tags
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS collection_tag TEXT;
+
+-- 10. Alter products table to support detailed specification fields
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS fabric TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS dimensions TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS garment_cut TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS artisan_origin TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS weaving_style TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS craft_time TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS thread_count TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS washing_standard TEXT;
+
+
+
+

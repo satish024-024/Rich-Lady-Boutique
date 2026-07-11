@@ -71,7 +71,20 @@ export async function DELETE(request: Request) {
 // PUT: Update product details (photo or stock level)
 export async function PUT(request: Request) {
   try {
-    const { id, imageUrl, stock } = await request.json();
+    const { 
+      id, 
+      imageUrl, 
+      stock, 
+      collectionTag,
+      fabric,
+      dimensions,
+      garmentCut,
+      artisanOrigin,
+      weavingStyle,
+      craftTime,
+      threadCount,
+      washingStandard
+    } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: "Missing product ID" }, { status: 400 });
@@ -83,6 +96,33 @@ export async function PUT(request: Request) {
     }
     if (stock !== undefined) {
       updatePayload.stock = Number(stock);
+    }
+    if (collectionTag !== undefined) {
+      updatePayload.collection_tag = collectionTag === "" ? null : collectionTag;
+    }
+    if (fabric !== undefined) {
+      updatePayload.fabric = fabric;
+    }
+    if (dimensions !== undefined) {
+      updatePayload.dimensions = dimensions;
+    }
+    if (garmentCut !== undefined) {
+      updatePayload.garment_cut = garmentCut;
+    }
+    if (artisanOrigin !== undefined) {
+      updatePayload.artisan_origin = artisanOrigin;
+    }
+    if (weavingStyle !== undefined) {
+      updatePayload.weaving_style = weavingStyle;
+    }
+    if (craftTime !== undefined) {
+      updatePayload.craft_time = craftTime;
+    }
+    if (threadCount !== undefined) {
+      updatePayload.thread_count = threadCount;
+    }
+    if (washingStandard !== undefined) {
+      updatePayload.washing_standard = washingStandard;
     }
 
     if (Object.keys(updatePayload).length === 0) {

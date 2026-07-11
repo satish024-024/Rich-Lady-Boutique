@@ -3,6 +3,8 @@ export interface Product {
   name: string;
   price: number;
   imageUrl: string;
+  sideProfile1Url?: string;
+  sideProfile2Url?: string;
   category: string;
   rating?: number;
   reviewsCount?: number;
@@ -15,4 +17,11 @@ export interface Product {
   collectionTag?: string;
   hoverImageUrl?: string;
   stock?: number;
+  dimensions?: string;
+  garmentCut?: string;
+  artisanOrigin?: string;
+  weavingStyle?: string;
+  craftTime?: string;
+  threadCount?: string;
+  washingStandard?: string;
 }

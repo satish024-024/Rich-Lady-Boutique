@@ -7,6 +7,8 @@ import { useAuth } from "@/providers/AuthProvider";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { isAdmin } from "@/utils/auth";
+import { auth } from "@/utils/firebaseClient";
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -18,8 +20,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const router = useRouter();
   const [justLoggedInAdmin, setJustLoggedInAdmin] = useState(false);
   
-  // States: 'choose' | 'register_details' | 'verify_email' | 'verify_sms' | 'success'
-  const [step, setStep] = useState<"choose" | "register_details" | "verify_email" | "verify_sms" | "success">("choose");
+  // States: 'choose' | 'verify_sms' | 'success'
+  const [step, setStep] = useState<"choose" | "verify_sms" | "success">("choose");
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -29,12 +31,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [phone, setPhone] = useState("");
   
   // Codes
-  const [emailCode, setEmailCode] = useState("");
   const [smsOtp, setSmsOtp] = useState("");
-
-  // Sandbox helpers for easy testing without real SMS/Email keys
-  const [sandboxEmailCode, setSandboxEmailCode] = useState<string | null>(null);
-  const [sandboxSmsOtp, setSandboxSmsOtp] = useState<string | null>(null);
 
   // Timer states for OTP Expiry & Resend
   const [otpExpirySeconds, setOtpExpirySeconds] = useState(300); // 5 minutes
@@ -42,6 +39,26 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const cooldownRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Firebase Auth references
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+  const confirmationResultRef = useRef<ConfirmationResult | null>(null);
+
+  // Dynamically initialize invisible reCAPTCHA
+  const initRecaptcha = () => {
+    if (!recaptchaVerifierRef.current && typeof window !== "undefined") {
+      try {
+        recaptchaVerifierRef.current = new RecaptchaVerifier(auth, "recaptcha-container", {
+          size: "invisible",
+          callback: () => {
+            // reCAPTCHA solved
+          },
+        });
+      } catch (err) {
+        console.error("Failed to initialize reCAPTCHA verifier:", err);
+      }
+    }
+  };
 
   // Clear timers on close/unmount
   useEffect(() => {
@@ -105,14 +122,16 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setName("");
     setEmail("");
     setPhone("");
-    setEmailCode("");
     setSmsOtp("");
-    setSandboxEmailCode(null);
-    setSandboxSmsOtp(null);
     setJustLoggedInAdmin(false);
     stopOtpTimer();
     stopCooldownTimer();
     setIsLoading(false);
+    confirmationResultRef.current = null;
+    if (recaptchaVerifierRef.current) {
+      recaptchaVerifierRef.current.clear();
+      recaptchaVerifierRef.current = null;
+    }
   };
 
   const handleClose = () => {
@@ -131,45 +150,45 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   // ----------------------------------------------------
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const target = phone.trim().toLowerCase();
-    if (!target) {
-      toast.error("Please enter your email address.");
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(target)) {
-      toast.error("Please enter a valid email address.");
+    const cleanPhone = phone.trim();
+    if (!cleanPhone || cleanPhone.length < 10) {
+      toast.error("Please enter a valid 10-digit mobile number.");
       return;
     }
 
     setIsLoading(true);
-    const toastId = toast.loading("Requesting secure OTP...");
+    const toastId = toast.loading("Initializing secure login...");
     try {
-      const res = await fetch("/api/otp/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to send OTP");
+      initRecaptcha();
+      const appVerifier = recaptchaVerifierRef.current;
+      if (!appVerifier) {
+        throw new Error("reCAPTCHA verifier not initialized");
       }
 
-      toast.success(data.message || "OTP sent successfully!", { id: toastId });
-      
-      // Save sandbox OTP for developer's convenience
-      if (data.sandboxOtp) {
-        setSandboxSmsOtp(data.sandboxOtp);
-        toast.info(`[Sandbox Mode] Your Login OTP is: ${data.sandboxOtp}`, { duration: 10000 });
+      // Format to E.164
+      let formattedPhone = cleanPhone;
+      if (!formattedPhone.startsWith("+")) {
+        if (formattedPhone.length === 10) {
+          formattedPhone = `+91${formattedPhone}`;
+        } else {
+          formattedPhone = `+${formattedPhone}`;
+        }
       }
 
+      const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+      confirmationResultRef.current = confirmationResult;
+
+      toast.success("Verification code sent successfully!", { id: toastId });
       setStep("verify_sms");
       startOtpTimer();
       startCooldownTimer();
     } catch (err: any) {
-      toast.error(err.message || "Could not complete request", { id: toastId });
+      console.error("Firebase Login Error:", err);
+      toast.error(err.message || "Failed to send verification code. Please check your Firebase configs.", { id: toastId });
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current = null;
+      }
     } finally {
       setIsLoading(false);
     }
@@ -189,79 +208,45 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       toast.error("Please enter a valid email address");
       return;
     }
-    if (!phone || phone.length < 10) {
+    const cleanPhone = phone.trim();
+    if (!cleanPhone || cleanPhone.length < 10) {
       toast.error("Please enter a valid 10-digit phone number");
       return;
     }
 
     setIsLoading(true);
-    const toastId = toast.loading("Sending email verification...");
+    const toastId = toast.loading("Initializing phone verification...");
     try {
-      const res = await fetch("/api/email/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, action: "send", name }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to trigger email verification");
+      initRecaptcha();
+      const appVerifier = recaptchaVerifierRef.current;
+      if (!appVerifier) {
+        throw new Error("reCAPTCHA verifier not initialized");
       }
 
-      toast.success("Verification code sent to your email!", { id: toastId });
-      
-      // Save sandbox code
-      if (data.sandboxCode) {
-        setSandboxEmailCode(data.sandboxCode);
-        toast.info(`[Sandbox Mode] Email code is: ${data.sandboxCode}`, { duration: 10000 });
+      // Format to E.164
+      let formattedPhone = cleanPhone;
+      if (!formattedPhone.startsWith("+")) {
+        if (formattedPhone.length === 10) {
+          formattedPhone = `+91${formattedPhone}`;
+        } else {
+          formattedPhone = `+${formattedPhone}`;
+        }
       }
 
-      setStep("verify_email");
+      const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+      confirmationResultRef.current = confirmationResult;
+
+      toast.success("Verification code sent to your phone!", { id: toastId });
+      setStep("verify_sms");
+      startOtpTimer();
+      startCooldownTimer();
     } catch (err: any) {
-      toast.error(err.message || "Failed to send code", { id: toastId });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // ----------------------------------------------------
-  // REGISTRATION FLOW (Step 2: Verify Email)
-  // ----------------------------------------------------
-  const handleVerifyEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!emailCode || emailCode.length < 6) {
-      toast.error("Please enter the 6-digit code.");
-      return;
-    }
-
-    setIsLoading(true);
-    const toastId = toast.loading("Verifying email...");
-    try {
-      const res = await fetch("/api/email/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: emailCode, action: "verify" }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Invalid code");
+      console.error("Firebase Register Error:", err);
+      toast.error(err.message || "Failed to send verification code. Please check your Firebase configs.", { id: toastId });
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current = null;
       }
-
-      // Successful Registration & Email verification! Log user session immediately
-      const userObj = {
-        phone: phone || "",
-        name: name,
-        email: email,
-      };
-
-      login(userObj);
-      setJustLoggedInAdmin(isAdmin(userObj));
-
-      toast.success("Welcome! Account created successfully.", { id: toastId });
-      setStep("success");
-    } catch (err: any) {
-      toast.error(err.message || "Verification failed", { id: toastId });
     } finally {
       setIsLoading(false);
     }
@@ -285,14 +270,22 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setIsLoading(true);
     const toastId = toast.loading("Verifying OTP...");
     try {
+      const confirmationResult = confirmationResultRef.current;
+      if (!confirmationResult) {
+        throw new Error("No active verification session. Please request a new code.");
+      }
+
+      // 1. Verify OTP with Firebase Client
+      const userCredential = await confirmationResult.confirm(smsOtp);
+      const idToken = await userCredential.user.getIdToken();
+
+      // 2. Authenticate on backend & fetch JWT
       const isRegistering = activeTab === "register";
-      const res = await fetch("/api/otp/verify", {
+      const res = await fetch("/api/auth/firebase-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          phone,
-          otp: smsOtp,
-          isRegistering,
+          idToken,
           name: isRegistering ? name : undefined,
           email: isRegistering ? email : undefined,
         }),
@@ -300,7 +293,12 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || "Invalid OTP code");
+        throw new Error(data.error || "Authentication failed on server");
+      }
+
+      // 3. Save JWT
+      if (data.token) {
+        localStorage.setItem("rich-lady-auth-token", data.token);
       }
 
       const userObj = {
@@ -311,7 +309,6 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
       // Successful Auth! Log user session
       login(userObj);
-
       setJustLoggedInAdmin(isAdmin(userObj));
 
       toast.success(isRegistering ? "Welcome! Account created successfully." : "Welcome back!", { id: toastId });
@@ -319,7 +316,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
       stopCooldownTimer();
       setStep("success");
     } catch (err: any) {
-      toast.error(err.message || "OTP validation failed", { id: toastId });
+      console.error("Firebase Verify OTP Error:", err);
+      toast.error(err.message || "OTP validation failed. Please check the code and try again.", { id: toastId });
     } finally {
       setIsLoading(false);
     }
@@ -332,30 +330,38 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
     if (resendCooldown > 0) return;
 
     setIsLoading(true);
-    const toastId = toast.loading("Resending OTP...");
+    const toastId = toast.loading("Resending code...");
     try {
-      const res = await fetch("/api/otp/resend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to resend OTP");
+      initRecaptcha();
+      const appVerifier = recaptchaVerifierRef.current;
+      if (!appVerifier) {
+        throw new Error("reCAPTCHA verifier not initialized");
       }
+
+      const cleanPhone = phone.trim();
+      let formattedPhone = cleanPhone;
+      if (!formattedPhone.startsWith("+")) {
+        if (formattedPhone.length === 10) {
+          formattedPhone = `+91${formattedPhone}`;
+        } else {
+          formattedPhone = `+${formattedPhone}`;
+        }
+      }
+
+      const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
+      confirmationResultRef.current = confirmationResult;
 
       toast.success("New OTP code dispatched successfully!", { id: toastId });
-      if (data.sandboxOtp) {
-        setSandboxSmsOtp(data.sandboxOtp);
-        toast.info(`[Sandbox Mode] Your New OTP is: ${data.sandboxOtp}`, { duration: 10000 });
-      }
-
       startOtpTimer();
       startCooldownTimer();
       setSmsOtp("");
     } catch (err: any) {
+      console.error("Firebase Resend OTP Error:", err);
       toast.error(err.message || "Resend failed", { id: toastId });
+      if (recaptchaVerifierRef.current) {
+        recaptchaVerifierRef.current.clear();
+        recaptchaVerifierRef.current = null;
+      }
     } finally {
       setIsLoading(false);
     }
@@ -435,20 +441,22 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
                       <div className="text-center mb-2">
                         <p className="text-xs text-secondary-text font-light leading-relaxed">
-                          Enter your registered email address below. We will send you a secure OTP verification code.
+                          Enter your mobile number below. We will send you a secure SMS verification code.
                         </p>
                       </div>
 
                       <div className="flex flex-col gap-1.5">
-                        <label className="text-[10px] uppercase tracking-wider font-semibold text-secondary-text">Email Address</label>
+                        <label className="text-[10px] uppercase tracking-wider font-semibold text-secondary-text">Mobile Number</label>
                         <div className="relative">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-secondary-text font-bold text-xs">+91</span>
                           <input
                             required
-                            type="email"
+                            type="tel"
+                            maxLength={10}
                             value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            placeholder="yourname@domain.com"
-                            className="w-full px-5 py-3.5 bg-card border border-border-accent/40 rounded-full text-xs text-primary-text focus:outline-none focus:border-muted-gold"
+                            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                            placeholder="Enter 10-digit number"
+                            className="w-full pl-14 pr-4 py-3.5 bg-card border border-border-accent/40 rounded-full text-xs text-primary-text focus:outline-none focus:border-muted-gold"
                             disabled={isLoading}
                           />
                         </div>
@@ -526,7 +534,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         disabled={isLoading}
                         className="w-full bg-forest-green hover:bg-[#1a2b24] text-primary-bg py-4 text-[10px] font-sans font-semibold tracking-widest uppercase rounded-full border border-muted-gold/20 hover:border-muted-gold transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer shadow-sm mt-4 disabled:opacity-50"
                       >
-                        Register &amp; Verify Email
+                        Register &amp; Verify Phone
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     </form>
@@ -534,74 +542,15 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 </div>
               )}
 
-              {/* STEP 2: VERIFY EMAIL (Registering only) */}
-              {step === "verify_email" && (
-                <form onSubmit={handleVerifyEmail} className="flex flex-col gap-5">
-                  <div className="text-center">
-                    <h3 className="font-serif text-base text-muted-gold font-semibold uppercase tracking-wider mb-2">
-                      Verify Your Email
-                    </h3>
-                    <p className="text-xs text-secondary-text font-light leading-relaxed">
-                      We have sent a 6-digit confirmation code to <b className="font-semibold text-primary-text">{email}</b>. 
-                      Enter it below to verify your email.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[10px] uppercase tracking-wider font-semibold text-secondary-text text-center">6-Digit Verification Code</label>
-                    <input
-                      required
-                      type="text"
-                      maxLength={6}
-                      value={emailCode}
-                      onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, ""))}
-                      placeholder="e.g. 123456"
-                      className="w-full px-4 py-3.5 bg-card border border-border-accent/40 rounded-full text-center text-sm font-mono tracking-widest text-primary-text focus:outline-none focus:border-muted-gold"
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  {sandboxEmailCode && (
-                    <div className="bg-[#FAF8F3] border border-dashed border-muted-gold/40 p-3 rounded-xl flex items-center gap-2 text-[10px] text-secondary-text justify-center">
-                      <AlertCircle className="w-4 h-4 text-muted-gold flex-shrink-0" />
-                      <span>Sandbox: Auto-filled email code is <b>{sandboxEmailCode}</b></span>
-                    </div>
-                  )}
-
-                  <div className="flex gap-4 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => setStep("choose")}
-                      disabled={isLoading}
-                      className="w-1/3 border border-border-accent/40 hover:border-primary-text py-3.5 text-[9px] font-sans font-semibold tracking-wider uppercase rounded-full transition-colors cursor-pointer disabled:opacity-50"
-                    >
-                      Back
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-2/3 bg-forest-green hover:bg-[#1a2b24] text-primary-bg py-3.5 text-[9px] font-sans font-semibold tracking-widest uppercase rounded-full border border-muted-gold/20 hover:border-muted-gold transition-all cursor-pointer shadow-sm disabled:opacity-50"
-                    >
-                      Verify Email
-                    </button>
-                  </div>
-                </form>
-              )}
-
               {/* STEP 3: VERIFY SMS OTP (Both Login & Register) */}
               {step === "verify_sms" && (
                 <form onSubmit={handleVerifyOtp} className="flex flex-col gap-5">
                   <div className="text-center">
                     <h3 className="font-serif text-base text-muted-gold font-semibold uppercase tracking-wider mb-2">
-                      {phone.includes("@") ? "Secure Email Verification" : "Secure Phone Verification"}
+                      Secure Phone Verification
                     </h3>
                     <p className="text-xs text-secondary-text font-light leading-relaxed">
-                      {phone.includes("@") ? (
-                        <>We have sent a 6-digit verification code to <b className="font-semibold text-primary-text">{phone}</b>.</>
-                      ) : (
-                        <>We have sent a 6-digit OTP code to <b className="font-semibold text-primary-text">+91 {phone}</b>.</>
-                      )}
-                      {" "}Please enter it below to authorize this session.
+                      We have sent a 6-digit OTP code to <b className="font-semibold text-primary-text">+91 {phone}</b>. Please enter it below to authorize this session.
                     </p>
                   </div>
 
@@ -618,13 +567,6 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       disabled={isLoading}
                     />
                   </div>
-
-                  {sandboxSmsOtp && (
-                    <div className="bg-[#FAF8F3] border border-dashed border-muted-gold/40 p-3 rounded-xl flex items-center gap-2 text-[10px] text-secondary-text justify-center">
-                      <AlertCircle className="w-4 h-4 text-muted-gold flex-shrink-0" />
-                      <span>Sandbox: Auto-filled phone OTP is <b>{sandboxSmsOtp}</b></span>
-                    </div>
-                  )}
 
                   {/* Resend Cooldown & OTP Expiry */}
                   <div className="flex justify-between items-center text-[10px] text-secondary-text px-2">
@@ -649,7 +591,7 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <div className="flex gap-4 mt-4">
                     <button
                       type="button"
-                      onClick={() => setStep(activeTab === "register" ? "verify_email" : "choose")}
+                      onClick={() => setStep("choose")}
                       disabled={isLoading}
                       className="w-1/3 border border-border-accent/40 hover:border-primary-text py-4 text-[9px] font-sans font-semibold tracking-wider uppercase rounded-full transition-colors cursor-pointer disabled:opacity-50"
                     >
@@ -695,6 +637,8 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
             </div>
           </motion.div>
+          {/* Invisible container for Firebase Phone Auth CAPTCHA */}
+          <div id="recaptcha-container" className="hidden"></div>
         </>
       )}
     </AnimatePresence>

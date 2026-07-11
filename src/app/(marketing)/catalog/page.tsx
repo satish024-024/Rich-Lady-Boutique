@@ -12,10 +12,12 @@ import { toast } from "sonner";
 function CatalogContent() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get("category");
+  const occasionParam = searchParams.get("occasion");
 
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState("All Designs");
+  const [activeOccasion, setActiveOccasion] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [sortBy, setSortBy] = useState("newest");
@@ -54,6 +56,10 @@ function CatalogContent() {
     }
   }, [categoryParam]);
 
+  useEffect(() => {
+    setActiveOccasion(occasionParam);
+  }, [occasionParam]);
+
   // Handle pill clicks
   const handleCategorySelect = (cat: string) => {
     setActiveCategory(cat);
@@ -88,6 +94,11 @@ function CatalogContent() {
       prods = prods.filter((p) => p.category.toLowerCase() === activeCategory.toLowerCase());
     }
 
+    // Occasion/Collection filter
+    if (activeOccasion) {
+      prods = prods.filter((p) => p.collectionTag?.toLowerCase() === activeOccasion.toLowerCase());
+    }
+
     // Price Filter
     prods = prods.filter((p) => p.price <= maxPrice);
 
@@ -109,7 +120,7 @@ function CatalogContent() {
     }
 
     setFilteredProducts(prods);
-  }, [searchQuery, activeCategory, sortBy, products, maxPrice, minRating, inStockOnly]);
+  }, [searchQuery, activeCategory, activeOccasion, sortBy, products, maxPrice, minRating, inStockOnly]);
 
   useEffect(() => {
     getProducts().then(setProducts);
@@ -252,8 +263,25 @@ function CatalogContent() {
 
         {/* Sorting and Grid/List Toggles - layout match */}
         <FadeIn delay={0.2} className="w-full flex justify-between items-center border-b border-border-accent/30 pb-4 mb-8 font-sans">
-          <div className="text-[10px] uppercase tracking-wider font-semibold text-secondary-text">
-            Showing {filteredProducts.length} Styles
+          <div className="text-[10px] uppercase tracking-wider font-semibold text-secondary-text flex items-center gap-1">
+            <span>Showing {filteredProducts.length} Styles</span>
+            {activeOccasion && (
+              <span className="ml-3 bg-[#3B2B24] text-primary-bg px-2.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider flex items-center gap-1.5 border border-muted-gold/20 shadow-xs">
+                Occasion: {activeOccasion.replace("-", " ")}
+                <button 
+                  onClick={() => {
+                    setActiveOccasion(null);
+                    const newParams = new URLSearchParams(window.location.search);
+                    newParams.delete("occasion");
+                    window.history.pushState(null, "", `/catalog?${newParams.toString()}`);
+                  }}
+                  className="hover:text-red-500 font-bold ml-1 cursor-pointer"
+                  title="Clear Occasion"
+                >
+                  ✕
+                </button>
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-4">

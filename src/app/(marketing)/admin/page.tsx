@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { getProducts, addProduct, deleteProduct, updateProductPhoto, updateProductStock } from "@/utils/db";
+import { getProducts, addProduct, deleteProduct, updateProductPhoto, updateProductStock, updateProductCollectionTag, updateProductSpecs } from "@/utils/db";
 import { Product } from "@/types/product";
 import { FadeIn } from "@/components/motion/FadeIn";
-import { Plus, Trash2, Edit3, Image as ImageIcon, Sparkles, ShoppingBag, FolderHeart, Mail, Phone, RefreshCw, Search } from "lucide-react";
+import { Plus, Trash2, Edit3, Image as ImageIcon, Sparkles, ShoppingBag, FolderHeart, Mail, Phone, RefreshCw, Search, Tag, Sliders } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/providers/AuthProvider";
 import { isAdmin } from "@/utils/auth";
@@ -20,9 +20,38 @@ export default function AdminPage() {
   const [price, setPrice] = useState("");
   const [category, setCategory] = useState("Sarees");
   const [description, setDescription] = useState("");
-  const [selectedImagePreset, setSelectedImagePreset] = useState("/images/cat_sarees.jpg");
-  const [customImageUrl, setCustomImageUrl] = useState("");
+  const [imageUrl, setImageUrl] = useState("/images/cat_sarees.jpg");
+  const [sideProfile1, setSideProfile1] = useState("");
+  const [sideProfile2, setSideProfile2] = useState("");
+  const [activeImageSlot, setActiveImageSlot] = useState<"main" | "side1" | "side2">("main");
+  const [isUploading, setIsUploading] = useState(false);
+  const [collectionTag, setCollectionTag] = useState("");
   const [stock, setStock] = useState("10");
+
+  // Specifications for new product
+  const [fabric, setFabric] = useState("");
+  const [dimensions, setDimensions] = useState("");
+  const [garmentCut, setGarmentCut] = useState("");
+  const [artisanOrigin, setArtisanOrigin] = useState("");
+  const [weavingStyle, setWeavingStyle] = useState("");
+  const [craftTime, setCraftTime] = useState("");
+  const [threadCount, setThreadCount] = useState("");
+  const [washingStandard, setWashingStandard] = useState("");
+  const [showEditorialSpecs, setShowEditorialSpecs] = useState(false);
+
+  // Specifications Editor Modal State
+  const [editingSpecsProduct, setEditingSpecsProduct] = useState<Product | null>(null);
+  const [editSpecsData, setEditSpecsData] = useState({
+    fabric: "",
+    dimensions: "",
+    garmentCut: "",
+    artisanOrigin: "",
+    weavingStyle: "",
+    craftTime: "",
+    threadCount: "",
+    washingStandard: "",
+  });
+
   const [activeTab, setActiveTab] = useState<"catalog" | "orders" | "notifications">("catalog");
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
@@ -156,6 +185,54 @@ export default function AdminPage() {
     getProducts().then(setProducts);
   }, []);
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please upload an image file (JPEG, PNG, WEBP, etc.)");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image file size must be less than 5MB");
+      return;
+    }
+
+    const toastId = toast.loading("Uploading photo to storage...");
+    setIsUploading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await res.json();
+      if (!res.ok) {
+        throw new Error(result.error || "Upload failed");
+      }
+
+      if (activeImageSlot === "main") {
+        setImageUrl(result.url);
+      } else if (activeImageSlot === "side1") {
+        setSideProfile1(result.url);
+      } else if (activeImageSlot === "side2") {
+        setSideProfile2(result.url);
+      }
+
+      toast.success("Image uploaded successfully!", { id: toastId });
+    } catch (err: any) {
+      toast.error(`Upload error: ${err.message}`, { id: toastId });
+    } finally {
+      setIsUploading(false);
+      e.target.value = "";
+    }
+  };
+
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -172,13 +249,24 @@ export default function AdminPage() {
       id: name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
       name,
       price: Number(price),
-      imageUrl: customImageUrl.trim() !== "" ? customImageUrl.trim() : selectedImagePreset,
+      imageUrl: imageUrl.trim(),
+      sideProfile1Url: sideProfile1.trim() !== "" ? sideProfile1.trim() : undefined,
+      sideProfile2Url: sideProfile2.trim() !== "" ? sideProfile2.trim() : undefined,
       category,
+      collectionTag: collectionTag.trim() !== "" ? collectionTag.trim() : undefined,
       rating: 5.0,
       reviewsCount: 1,
       isNewArrival: true,
       description: description.trim() !== "" ? description.trim() : `Premium quality boutique design. Woven using traditional handloom methods, offering total style and comfort.`,
       stock: Number(stock) || 0,
+      fabric: fabric.trim() !== "" ? fabric.trim() : undefined,
+      dimensions: dimensions.trim() !== "" ? dimensions.trim() : undefined,
+      garmentCut: garmentCut.trim() !== "" ? garmentCut.trim() : undefined,
+      artisanOrigin: artisanOrigin.trim() !== "" ? artisanOrigin.trim() : undefined,
+      weavingStyle: weavingStyle.trim() !== "" ? weavingStyle.trim() : undefined,
+      craftTime: craftTime.trim() !== "" ? craftTime.trim() : undefined,
+      threadCount: threadCount.trim() !== "" ? threadCount.trim() : undefined,
+      washingStandard: washingStandard.trim() !== "" ? washingStandard.trim() : undefined,
     };
 
     const toastId = toast.loading("Adding product to store...");
@@ -191,8 +279,20 @@ export default function AdminPage() {
       setName("");
       setPrice("");
       setDescription("");
-      setCustomImageUrl("");
+      setImageUrl("/images/cat_sarees.jpg");
+      setSideProfile1("");
+      setSideProfile2("");
       setStock("10");
+      setActiveImageSlot("main");
+      setCollectionTag("");
+      setFabric("");
+      setDimensions("");
+      setGarmentCut("");
+      setArtisanOrigin("");
+      setWeavingStyle("");
+      setCraftTime("");
+      setThreadCount("");
+      setWashingStandard("");
       toast.success(`"${name}" successfully added to the catalog!`, { id: toastId });
     } catch (err: any) {
       toast.error(`Failed to add: ${err.message}`, { id: toastId });
@@ -379,45 +479,249 @@ export default function AdminPage() {
                 </select>
               </div>
 
+              {/* Occasion/Collection Tag */}
+              <div className="flex flex-col gap-2">
+                <label className="uppercase tracking-wider font-semibold text-secondary-text">Occasion / Collection Tag</label>
+                <select
+                  value={collectionTag}
+                  onChange={(e) => setCollectionTag(e.target.value)}
+                  className="bg-primary-bg border border-border-accent p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold transition-colors cursor-pointer"
+                >
+                  <option value="">None (General Catalog)</option>
+                  <option value="wedding">Wedding Collection</option>
+                  <option value="festival">Festival Collection</option>
+                  <option value="office-wear">Office Wear</option>
+                  <option value="daily-wear">Daily Wear</option>
+                  <option value="party-wear">Party Wear</option>
+                  <option value="traditional">Traditional</option>
+                  <option value="designer">Designer</option>
+                  <option value="casual">Casual</option>
+                </select>
+              </div>
+
+              {/* Dropdown for Active Image Slot */}
+              <div className="flex flex-col gap-2">
+                <label className="uppercase tracking-wider font-semibold text-secondary-text">Target Image Slot</label>
+                <select
+                  value={activeImageSlot}
+                  onChange={(e) => setActiveImageSlot(e.target.value as any)}
+                  className="bg-primary-bg border border-border-accent p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold transition-colors cursor-pointer"
+                >
+                  <option value="main">Main Product Photo</option>
+                  <option value="side1">Side Profile 1 Photo</option>
+                  <option value="side2">Side Profile 2 Photo</option>
+                </select>
+              </div>
+
               {/* Image Selection presets */}
               <div className="flex flex-col gap-2">
-                <label className="uppercase tracking-wider font-semibold text-secondary-text">Select Photo Preset</label>
+                <label className="uppercase tracking-wider font-semibold text-secondary-text">Select Photo Preset for Active Slot</label>
                 <div className="grid grid-cols-5 gap-2 max-h-[120px] overflow-y-auto p-1 border border-border-accent/40 rounded-xs bg-primary-bg no-scrollbar">
-                  {imagePresets.map((preset) => (
-                    <div
-                      key={preset.label}
-                      onClick={() => {
-                        setSelectedImagePreset(preset.path);
-                        setCustomImageUrl("");
-                      }}
-                      className={`aspect-square rounded-xs border overflow-hidden cursor-pointer hover:border-muted-gold relative ${
-                        selectedImagePreset === preset.path && customImageUrl === ""
-                          ? "border-muted-gold ring-1 ring-muted-gold/20"
-                          : "border-border-accent/40"
-                      }`}
-                      title={preset.label}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={preset.path}
-                        alt={preset.label}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
+                  {imagePresets.map((preset) => {
+                    const isActiveValue = 
+                      activeImageSlot === "main" 
+                        ? imageUrl === preset.path 
+                        : activeImageSlot === "side1" 
+                        ? sideProfile1 === preset.path 
+                        : sideProfile2 === preset.path;
+
+                    return (
+                      <div
+                        key={preset.label}
+                        onClick={() => {
+                          if (activeImageSlot === "main") {
+                            setImageUrl(preset.path);
+                          } else if (activeImageSlot === "side1") {
+                            setSideProfile1(preset.path);
+                          } else if (activeImageSlot === "side2") {
+                            setSideProfile2(preset.path);
+                          }
+                        }}
+                        className={`aspect-square rounded-xs border overflow-hidden cursor-pointer hover:border-muted-gold relative ${
+                          isActiveValue
+                            ? "border-muted-gold ring-1 ring-muted-gold/20"
+                            : "border-border-accent/40"
+                        }`}
+                        title={preset.label}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={preset.path}
+                          alt={preset.label}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Or upload from storage */}
+              <div className="flex flex-col gap-2">
+                <label className="uppercase tracking-wider font-semibold text-secondary-text">Or Upload Image from Local Storage</label>
+                <div className="relative border border-dashed border-border-accent/50 hover:border-muted-gold p-4 rounded-xs text-center cursor-pointer transition-colors bg-primary-bg flex flex-col items-center justify-center gap-2 group min-h-[80px]">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isUploading}
+                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed z-10"
+                  />
+                  <div className="flex flex-col items-center gap-1">
+                    <span className="font-semibold text-muted-gold group-hover:underline">
+                      {isUploading ? "Uploading file..." : "Choose Local Image File"}
+                    </span>
+                    <span className="text-[10px] text-secondary-text/70">
+                      Supports PNG, JPG, WEBP (Max 5MB)
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {/* Or custom URL */}
               <div className="flex flex-col gap-2">
-                <label className="uppercase tracking-wider font-semibold text-secondary-text">Or Custom Image URL</label>
+                <label className="uppercase tracking-wider font-semibold text-secondary-text">Or Custom Image URL for Active Slot</label>
                 <input
                   type="text"
-                  value={customImageUrl}
-                  onChange={(e) => setCustomImageUrl(e.target.value)}
+                  value={
+                    activeImageSlot === "main" 
+                      ? imageUrl 
+                      : activeImageSlot === "side1" 
+                      ? sideProfile1 
+                      : sideProfile2
+                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (activeImageSlot === "main") {
+                      setImageUrl(val);
+                    } else if (activeImageSlot === "side1") {
+                      setSideProfile1(val);
+                    } else if (activeImageSlot === "side2") {
+                      setSideProfile2(val);
+                    }
+                  }}
                   placeholder="https://images.unsplash.com/..."
                   className="bg-primary-bg border border-border-accent p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold transition-colors"
                 />
+              </div>
+
+              {/* Slots Status Display */}
+              <div className="bg-[#FAF8F3]/50 border border-border-accent/35 p-3.5 rounded-sm flex flex-col gap-2 text-[10px]">
+                <div className="font-bold uppercase tracking-wider text-muted-gold">Assigned Slots Preview:</div>
+                <div className="flex items-center justify-between border-b border-border-accent/15 pb-1">
+                  <span>Main Photo:</span>
+                  <span className="font-semibold truncate max-w-[180px] text-primary-text">{imageUrl || "Not Set"}</span>
+                </div>
+                <div className="flex items-center justify-between border-b border-border-accent/15 pb-1">
+                  <span>Side Profile 1:</span>
+                  <span className="font-semibold truncate max-w-[180px] text-primary-text">{sideProfile1 || "Not Set"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Side Profile 2:</span>
+                  <span className="font-semibold truncate max-w-[180px] text-primary-text">{sideProfile2 || "Not Set"}</span>
+                </div>
+              </div>
+
+              {/* Editorial Specifications Toggle */}
+              <div className="flex flex-col gap-2 mt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowEditorialSpecs(!showEditorialSpecs)}
+                  className="w-full flex items-center justify-between border border-border-accent/40 bg-card p-3 rounded-xs text-xs font-semibold uppercase tracking-wider text-primary-text hover:border-muted-gold transition-colors text-left cursor-pointer"
+                >
+                  <span className="flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-muted-gold" />
+                    <span>Editorial Specifications (Optional)</span>
+                  </span>
+                  <span>{showEditorialSpecs ? "▲" : "▼"}</span>
+                </button>
+
+                {showEditorialSpecs && (
+                  <div className="flex flex-col gap-3 p-4 border border-border-accent/30 rounded-xs bg-[#FFFDF9]/40 mt-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Fabric Type</label>
+                        <input
+                          type="text"
+                          value={fabric}
+                          onChange={(e) => setFabric(e.target.value)}
+                          placeholder="e.g. Fine Banarasi Silk"
+                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Dimensions</label>
+                        <input
+                          type="text"
+                          value={dimensions}
+                          onChange={(e) => setDimensions(e.target.value)}
+                          placeholder="e.g. 5.5m Saree + 0.8m Blouse"
+                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Garment Cut</label>
+                        <input
+                          type="text"
+                          value={garmentCut}
+                          onChange={(e) => setGarmentCut(e.target.value)}
+                          placeholder="e.g. Unstitched Saree"
+                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Artisan Origin</label>
+                        <input
+                          type="text"
+                          value={artisanOrigin}
+                          onChange={(e) => setArtisanOrigin(e.target.value)}
+                          placeholder="e.g. Varanasi, India"
+                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Weaving Style</label>
+                        <input
+                          type="text"
+                          value={weavingStyle}
+                          onChange={(e) => setWeavingStyle(e.target.value)}
+                          placeholder="e.g. Katan Silk Brocade"
+                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Craft Time</label>
+                        <input
+                          type="text"
+                          value={craftTime}
+                          onChange={(e) => setCraftTime(e.target.value)}
+                          placeholder="e.g. 72 Hours"
+                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Thread Count</label>
+                        <input
+                          type="text"
+                          value={threadCount}
+                          onChange={(e) => setThreadCount(e.target.value)}
+                          placeholder="e.g. 120s Double Warp"
+                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] uppercase font-bold tracking-wider text-secondary-text">Garment Care</label>
+                        <input
+                          type="text"
+                          value={washingStandard}
+                          onChange={(e) => setWashingStandard(e.target.value)}
+                          placeholder="e.g. Dry Clean Only"
+                          className="bg-primary-bg border border-border-accent p-2 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Description */}
@@ -545,6 +849,58 @@ export default function AdminPage() {
                           ))}
                         </select>
                       </div>
+
+                      {/* Occasion Selector */}
+                      <div className="flex items-center gap-1.5 bg-card border border-border-accent/40 px-2 py-1.5 rounded-xs">
+                        <Tag className="w-3.5 h-3.5 text-muted-gold" />
+                        <select
+                          onChange={async (e) => {
+                            const newTag = e.target.value;
+                            const toastId = toast.loading(`Updating occasion tag for ${prod.name}...`);
+                            try {
+                              await updateProductCollectionTag(prod.id, newTag);
+                              const updated = await getProducts();
+                              setProducts(updated);
+                              toast.success("Occasion updated successfully!", { id: toastId });
+                            } catch (err: any) {
+                              toast.error(`Occasion update failed: ${err.message}`, { id: toastId });
+                            }
+                          }}
+                          value={prod.collectionTag || ""}
+                          className="text-[9px] uppercase font-sans font-semibold tracking-wider text-secondary-text bg-transparent border-none outline-none cursor-pointer"
+                        >
+                          <option value="">No Occasion</option>
+                          <option value="wedding">Wedding</option>
+                          <option value="festival">Festival</option>
+                          <option value="office-wear">Office Wear</option>
+                          <option value="daily-wear">Daily Wear</option>
+                          <option value="party-wear">Party Wear</option>
+                          <option value="traditional">Traditional</option>
+                          <option value="designer">Designer</option>
+                          <option value="casual">Casual</option>
+                        </select>
+                      </div>
+
+                      {/* Edit Specifications */}
+                      <button
+                        onClick={() => {
+                          setEditingSpecsProduct(prod);
+                          setEditSpecsData({
+                            fabric: prod.fabric || "",
+                            dimensions: prod.dimensions || "",
+                            garmentCut: prod.garmentCut || "",
+                            artisanOrigin: prod.artisanOrigin || "",
+                            weavingStyle: prod.weavingStyle || "",
+                            craftTime: prod.craftTime || "",
+                            threadCount: prod.threadCount || "",
+                            washingStandard: prod.washingStandard || "",
+                          });
+                        }}
+                        className="p-2 border border-border-accent/40 hover:border-muted-gold hover:text-muted-gold rounded-xs transition-colors cursor-pointer text-secondary-text"
+                        title="Edit specifications"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
 
                       {/* Delete */}
                       <button
@@ -972,6 +1328,153 @@ export default function AdminPage() {
         )}
 
       </div>
+
+      {/* Edit Specifications Modal overlay */}
+      {editingSpecsProduct && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FFFDF9] border border-border-accent/40 w-full max-w-2xl rounded-2xl shadow-luxury overflow-hidden flex flex-col max-h-[85vh] animate-fadeIn text-xs text-secondary-text font-sans">
+            {/* Header */}
+            <div className="p-6 border-b border-border-accent/25 bg-card flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-5 h-5 text-muted-gold" />
+                <div>
+                  <h3 className="font-serif text-base text-primary-text font-semibold text-slate-800">Edit Specifications</h3>
+                  <p className="text-[10px] text-secondary-text/80 uppercase tracking-wider font-light mt-0.5">{editingSpecsProduct.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingSpecsProduct(null)}
+                className="p-1.5 text-primary-text hover:text-muted-gold transition-colors rounded-full hover:bg-secondary-bg/20 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Inputs Form */}
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 no-scrollbar">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Fabric Type</label>
+                  <input
+                    type="text"
+                    value={editSpecsData.fabric}
+                    onChange={(e) => setEditSpecsData({ ...editSpecsData, fabric: e.target.value })}
+                    placeholder="e.g. Premium Handloom Kora"
+                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Dimensions</label>
+                  <input
+                    type="text"
+                    value={editSpecsData.dimensions}
+                    onChange={(e) => setEditSpecsData({ ...editSpecsData, dimensions: e.target.value })}
+                    placeholder="e.g. 5.5m Standard Saree"
+                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Garment Cut</label>
+                  <input
+                    type="text"
+                    value={editSpecsData.garmentCut}
+                    onChange={(e) => setEditSpecsData({ ...editSpecsData, garmentCut: e.target.value })}
+                    placeholder="e.g. Unstitched Heritage Saree"
+                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Artisan Origin</label>
+                  <input
+                    type="text"
+                    value={editSpecsData.artisanOrigin}
+                    onChange={(e) => setEditSpecsData({ ...editSpecsData, artisanOrigin: e.target.value })}
+                    placeholder="e.g. Varanasi, India"
+                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Weaving Style</label>
+                  <input
+                    type="text"
+                    value={editSpecsData.weavingStyle}
+                    onChange={(e) => setEditSpecsData({ ...editSpecsData, weavingStyle: e.target.value })}
+                    placeholder="e.g. Handloom Zari Weave"
+                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Estimated Craft Time</label>
+                  <input
+                    type="text"
+                    value={editSpecsData.craftTime}
+                    onChange={(e) => setEditSpecsData({ ...editSpecsData, craftTime: e.target.value })}
+                    placeholder="e.g. 72 Hours"
+                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Thread Count</label>
+                  <input
+                    type="text"
+                    value={editSpecsData.threadCount}
+                    onChange={(e) => setEditSpecsData({ ...editSpecsData, threadCount: e.target.value })}
+                    placeholder="e.g. 120s Double Warp"
+                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="uppercase tracking-wider font-bold text-secondary-text text-[10px]">Garment Care</label>
+                  <input
+                    type="text"
+                    value={editSpecsData.washingStandard}
+                    onChange={(e) => setEditSpecsData({ ...editSpecsData, washingStandard: e.target.value })}
+                    placeholder="e.g. Dry Clean Only"
+                    className="bg-primary-bg border border-border-accent/40 p-3 rounded-xs text-primary-text outline-none focus:border-muted-gold text-xs transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Footer actions */}
+            <div className="p-6 bg-card border-t border-border-accent/25 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setEditingSpecsProduct(null)}
+                className="px-5 py-3 border border-border-accent/45 hover:border-primary-text text-[10px] uppercase font-bold tracking-wider rounded-xs cursor-pointer transition-colors bg-transparent"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const toastId = toast.loading("Saving updated specifications...");
+                  try {
+                    await updateProductSpecs(editingSpecsProduct.id, editSpecsData);
+                    const updated = await getProducts();
+                    setProducts(updated);
+                    setEditingSpecsProduct(null);
+                    toast.success("Specifications updated successfully!", { id: toastId });
+                  } catch (err: any) {
+                    toast.error(`Update failed: ${err.message}`, { id: toastId });
+                  }
+                }}
+                className="px-6 py-3 bg-forest-green hover:bg-[#1a2b24] text-primary-bg text-[10px] uppercase font-bold tracking-wider rounded-xs border border-muted-gold/25 hover:border-muted-gold cursor-pointer transition-all shadow-xs"
+              >
+                Save Specifications
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

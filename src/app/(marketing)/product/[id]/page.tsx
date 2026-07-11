@@ -41,14 +41,22 @@ export default function ProductDetailPage({
         setProduct(found);
         
         // Gallery (vertical stack list on the left side)
-        const related = products.filter((p) => p.category === found.category && p.id !== found.id);
         const galleryImages = [
           found.imageUrl,
-          ...related.map((p) => p.imageUrl),
-          "/images/featured_everyday.jpg",
-          "/images/festival_spotlight.jpg"
-        ].slice(0, 4);
-        setGallery(galleryImages);
+          found.sideProfile1Url,
+          found.sideProfile2Url
+        ].filter(Boolean) as string[];
+
+        // Fallback if no side profiles are configured
+        if (galleryImages.length === 1) {
+          const related = products.filter((p) => p.category === found.category && p.id !== found.id);
+          galleryImages.push(
+            ...related.map((p) => p.imageUrl),
+            "/images/featured_everyday.jpg",
+            "/images/festival_spotlight.jpg"
+          );
+        }
+        setGallery(galleryImages.slice(0, 4));
 
         // Recommendations
         const recs = products.filter((p) => p.id !== found.id).slice(0, 4);
@@ -167,45 +175,47 @@ export default function ProductDetailPage({
   // Specifications metadata
   const productCode = `RL-${(product.price % 1000) + 4000}`;
   
-  const specDimensions = product.category === "Sarees" 
+  const specFabric = product.fabric || "Premium Handloom";
+
+  const specDimensions = product.dimensions || (product.category === "Sarees" 
     ? "5.5m Standard Saree" 
     : product.category === "Accessories" 
     ? "Free Size" 
-    : "Standard Fit (XS - XXL)";
+    : "Standard Fit (XS - XXL)");
 
-  const specType = product.category === "Sarees" 
+  const specType = product.garmentCut || (product.category === "Sarees" 
     ? "Unstitched Heritage Saree" 
     : product.category === "Accessories" 
     ? "Bespoke Accessory" 
-    : "Tailored Premium Dress";
+    : "Tailored Premium Dress");
 
-  const specWeave = product.category === "Sarees" 
+  const specWeave = product.weavingStyle || (product.category === "Sarees" 
     ? "Katan Silk Brocade" 
     : product.category === "Kurtis" 
     ? "Hand-embroidered Cotton" 
     : product.category === "Accessories" 
     ? "Kundan Stone Craft" 
-    : "Zari Embroidered Weave";
+    : "Zari Embroidered Weave");
 
-  const specCraftTime = product.category === "Sarees" 
+  const specCraftTime = product.craftTime || (product.category === "Sarees" 
     ? "72 Hours" 
     : product.category === "Accessories" 
     ? "24 Hours" 
-    : "48 Hours";
+    : "48 Hours");
 
-  const specThreadCount = product.category === "Sarees" 
+  const specThreadCount = product.threadCount || (product.category === "Sarees" 
     ? "140s Double Warp" 
     : product.category === "Accessories" 
     ? "Premium Kundan Setting" 
-    : "100s Egyptian Cotton";
+    : "100s Egyptian Cotton");
 
-  const specOrigin = product.category === "Sarees" 
+  const specOrigin = product.artisanOrigin || (product.category === "Sarees" 
     ? "Varanasi, India" 
-    : "Rajamahendravaram, AP";
+    : "Rajamahendravaram, AP");
 
-  const specCare = product.category === "Accessories" 
+  const specCare = product.washingStandard || (product.category === "Accessories" 
     ? "Store in Velvet Case" 
-    : "Dry Clean Recommended";
+    : "Dry Clean Recommended");
 
   return (
     <div className="w-full min-h-screen bg-primary-bg py-32 font-sans select-none">
@@ -516,7 +526,7 @@ export default function ProductDetailPage({
                     <div className="grid grid-cols-2 gap-y-2 gap-x-4 border-t border-border-accent/20 pt-3">
                       <div>
                         <span className="font-semibold text-primary-text block text-[9px] uppercase tracking-wider text-muted-gold">Fabric Type</span>
-                        <span>{product.fabric || "Premium Handloom"}</span>
+                        <span>{specFabric}</span>
                       </div>
                       <div>
                         <span className="font-semibold text-primary-text block text-[9px] uppercase tracking-wider text-muted-gold">Dimensions</span>
