@@ -4,7 +4,7 @@ import { z } from "zod";
 export const categorySchema = z.object({
   name: z.string().min(1, "Category name is required").max(50, "Category name cannot exceed 50 characters"),
   slug: z.string().min(1, "Slug is required").regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
-  imageUrl: z.string().url("Cover image must be a valid URL").optional().or(z.literal("")),
+  imageUrl: z.string().url("Cover image must be a valid URL").or(z.string().startsWith("/").max(2048)).optional().or(z.literal("")),
   sortOrder: z.number().int().default(0),
   isActive: z.boolean().default(true),
   version: z.number().int().default(1)
@@ -33,9 +33,9 @@ export const productSchema = z.object({
   quantityAvailable: z.number().int().nonnegative("Quantity must be a non-negative integer").default(10),
   trackInventory: z.boolean().default(true),
   allowBackorder: z.boolean().default(false),
-  imageUrl: z.string().url("Image URL must be a valid URL").optional().or(z.literal("")),
-  sideProfile1Url: z.string().url("Side Profile 1 image must be a valid URL").optional().or(z.literal("")),
-  sideProfile2Url: z.string().url("Side Profile 2 image must be a valid URL").optional().or(z.literal("")),
+  imageUrl: z.string().url("Image URL must be a valid URL").or(z.string().startsWith("/").max(2048)).optional().or(z.literal("")),
+  sideProfile1Url: z.string().url("Side Profile 1 image must be a valid URL").or(z.string().startsWith("/").max(2048)).optional().or(z.literal("")),
+  sideProfile2Url: z.string().url("Side Profile 2 image must be a valid URL").or(z.string().startsWith("/").max(2048)).optional().or(z.literal("")),
   collectionTag: z.string().max(50).optional().or(z.literal("")),
   rating: z.number().min(1).max(5).default(5.0),
   reviewsCount: z.number().int().nonnegative().default(0),

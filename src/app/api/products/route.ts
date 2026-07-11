@@ -97,14 +97,34 @@ export async function POST(request: Request) {
       }, { status: isUniqueConflict ? 409 : 500 });
     }
 
-    // Insert product primary image if provided
+    // Insert product images if provided
+    const imagesToInsert = [];
     if (payload.imageUrl) {
-      await supabaseServer.from("product_images").insert({
+      imagesToInsert.push({
         product_id: data.id,
         url: payload.imageUrl,
         is_primary: true,
         sort_order: 0
       });
+    }
+    if (payload.sideProfile1Url) {
+      imagesToInsert.push({
+        product_id: data.id,
+        url: payload.sideProfile1Url,
+        is_primary: false,
+        sort_order: 1
+      });
+    }
+    if (payload.sideProfile2Url) {
+      imagesToInsert.push({
+        product_id: data.id,
+        url: payload.sideProfile2Url,
+        is_primary: false,
+        sort_order: 2
+      });
+    }
+    if (imagesToInsert.length > 0) {
+      await supabaseServer.from("product_images").insert(imagesToInsert);
     }
 
     // Revalidate tags
