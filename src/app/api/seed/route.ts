@@ -25,18 +25,27 @@ export async function GET() {
       // Map capitalized category name to lowercase/kebab-case id
       let mappedCategory = prod.category ? prod.category.toLowerCase().replace(/\s+/g, "-") : null;
       
-      // Edge case: handle specific mappings if needed. 
-      // Categories in categories.ts: sarees, kurtis, dress-materials, lehengas, gowns, western-wear, accessories, new-arrivals.
       return {
         id: prod.id,
         name: prod.name,
         price: prod.price,
         image_url: prod.imageUrl,
+        side_profile1_url: prod.sideProfile1Url || null,
+        side_profile2_url: prod.sideProfile2Url || null,
         category: mappedCategory,
         rating: prod.rating || 5.0,
         reviews_count: prod.reviewsCount || 0,
         is_new_arrival: prod.isNewArrival || false,
         description: prod.description || "",
+        collection_tag: prod.collectionTag || null,
+        fabric: prod.fabric || null,
+        dimensions: prod.dimensions || null,
+        garment_cut: prod.garmentCut || null,
+        artisan_origin: prod.artisanOrigin || null,
+        weaving_style: prod.weavingStyle || null,
+        craft_time: prod.craftTime || null,
+        thread_count: prod.threadCount || null,
+        washing_standard: prod.washingStandard || null,
       };
     });
 
