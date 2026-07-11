@@ -44,6 +44,18 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
   const confirmationResultRef = useRef<ConfirmationResult | null>(null);
 
+  const handleDevAdminBypass = () => {
+    const adminObj = {
+      name: "Boutique Owner (Admin)",
+      email: "admin@richladyboutique.com",
+      phone: "9030443306"
+    };
+    login(adminObj);
+    toast.success("Developer Bypass: Logged in as Administrator!");
+    onClose();
+    router.push("/admin");
+  };
+
   // Dynamically initialize invisible reCAPTCHA
   const initRecaptcha = () => {
     if (!recaptchaVerifierRef.current && typeof window !== "undefined") {
@@ -470,6 +482,23 @@ export function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         Send Secure OTP
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
+
+                      {/* Developer Admin Bypass Option */}
+                      {process.env.NODE_ENV === "development" && (
+                        <div className="mt-4 pt-4 border-t border-border-accent/15 flex flex-col items-center">
+                          <span className="text-[8px] uppercase tracking-widest text-muted-gold font-bold mb-2">
+                            Developer Tools
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleDevAdminBypass}
+                            className="w-full bg-card hover:bg-secondary-bg text-muted-gold py-3.5 text-[9px] font-sans font-bold tracking-widest uppercase rounded-full border border-border-accent/40 hover:border-muted-gold transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5" />
+                            Bypass to Admin Panel
+                          </button>
+                        </div>
+                      )}
                     </form>
                   ) : (
                     /* REGISTER FORM DETAILS */

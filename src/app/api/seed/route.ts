@@ -5,6 +5,21 @@ import { categoriesData } from "@/data/categories";
 
 export async function GET() {
   try {
+    // Check if Supabase variables are unset or placeholders
+    if (
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder-project")
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Supabase Environment Variables Missing",
+          message: "Please create a .env.local file in the project root containing your NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to connect your database. Locally, the site is running on high-fidelity offline/localStorage fallback mode.",
+        },
+        { status: 400 }
+      );
+    }
+
     // 1. Seed categories
     const categoriesToInsert = categoriesData.map((cat) => ({
       id: cat.id,
