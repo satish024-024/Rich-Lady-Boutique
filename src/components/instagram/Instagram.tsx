@@ -1,14 +1,26 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Play, Eye, ArrowRight } from "lucide-react";
 import { instagramData } from "@/data/instagram";
 import { brandInfo } from "@/data/brand";
 import { FadeIn } from "@/components/motion/FadeIn";
 
 export function InstagramSection() {
+  const [reels, setReels] = useState<any[]>(instagramData);
   const [hoveredReel, setHoveredReel] = useState<string | null>(null);
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
+
+  useEffect(() => {
+    fetch("/api/instagram/reels")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.reels) {
+          setReels(data.reels);
+        }
+      })
+      .catch((err) => console.error("Error loading instagram reels:", err));
+  }, []);
 
   const handleMouseEnter = (id: string) => {
     setHoveredReel(id);
@@ -55,7 +67,7 @@ export function InstagramSection() {
 
         {/* Bespoke local reels grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-          {instagramData.map((reel, idx) => (
+          {reels.map((reel, idx) => (
             <FadeIn
               key={reel.id}
               delay={idx * 0.05}
