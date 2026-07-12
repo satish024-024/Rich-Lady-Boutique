@@ -19,12 +19,12 @@ export async function POST(request: Request) {
     let totalAmount = 0;
 
     for (const item of items) {
-      // Fetch product from Supabase to verify price and stock (with missing column self-healing)
+      // Fetch product from Supabase to verify price and stock
       let product: any = null;
       let dbError: any = null;
 
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id);
-      const query = supabaseServer.from("products").select("price, stock");
+      const query = supabaseServer.from("products").select("price, quantity_available");
       if (isUuid) {
         query.eq("id", item.id);
       } else {
@@ -35,34 +35,13 @@ export async function POST(request: Request) {
       product = firstQuery.data;
       dbError = firstQuery.error;
 
-      if (dbError) {
-        const isMissingStockCol =
-          dbError.code === "PGRST204" ||
-          dbError.code === "42703" ||
-          dbError.message?.includes("stock") ||
-          dbError.message?.includes("column \"stock\" of relation \"products\" does not exist");
-
-        if (isMissingStockCol) {
-          const retryQuery = supabaseServer.from("products").select("price");
-          if (isUuid) {
-            retryQuery.eq("id", item.id);
-          } else {
-            retryQuery.eq("slug", item.id);
-          }
-          const retryResult = await retryQuery.single();
-          product = retryResult.data;
-          dbError = retryResult.error;
-        }
-      }
-
       if (dbError || !product) {
         return NextResponse.json({ error: `Product not found in database: ${item.id}` }, { status: 400 });
       }
 
       const qty = item.quantity || 1;
-      const hasStockCol = product.hasOwnProperty("stock");
-      const stockCount = hasStockCol && product.stock !== null ? Number(product.stock) : 10;
-      if (hasStockCol && qty > stockCount) {
+      const stockCount = product.quantity_available !== null ? Number(product.quantity_available) : 10;
+      if (qty > stockCount) {
         return NextResponse.json({ error: `Insufficient stock for product: ${item.id}. Only ${stockCount} left.` }, { status: 400 });
       }
 

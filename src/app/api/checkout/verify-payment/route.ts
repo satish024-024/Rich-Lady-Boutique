@@ -193,11 +193,11 @@ export async function POST(request: Request) {
       try {
         const { data: stockData } = await supabaseServer
           .from("products")
-          .select("stock")
+          .select("quantity_available")
           .eq("id", resolvedId)
           .single();
-        if (stockData && stockData.stock !== undefined && stockData.stock !== null) {
-          currentStock = Number(stockData.stock);
+        if (stockData && stockData.quantity_available !== undefined && stockData.quantity_available !== null) {
+          currentStock = Number(stockData.quantity_available);
         }
       } catch (err) {
         console.warn("Could not retrieve stock info for product:", resolvedId);
@@ -208,7 +208,7 @@ export async function POST(request: Request) {
         try {
           const { error: updateStockErr } = await supabaseServer
             .from("products")
-            .update({ stock: newStock })
+            .update({ quantity_available: newStock })
             .eq("id", resolvedId);
           if (updateStockErr) {
             console.error(`Failed to deduct inventory for ${resolvedId}:`, updateStockErr.message);
