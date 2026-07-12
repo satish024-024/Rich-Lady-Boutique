@@ -75,20 +75,43 @@ CREATE TABLE IF NOT EXISTS public.notification_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 6. Alter orders table to link customer emails
--- Check if column exists, if not add it
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_schema = 'public' 
-          AND table_name = 'orders' 
-          AND column_name = 'customer_email'
-    ) THEN
-        ALTER TABLE public.orders ADD COLUMN customer_email TEXT;
-    END IF;
-END $$;
+-- 6. Orders and Order Items Tables
+CREATE TABLE IF NOT EXISTS public.orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    customer_name TEXT NOT NULL,
+    customer_phone TEXT NOT NULL,
+    customer_email TEXT,
+    shipping_address TEXT NOT NULL,
+    city TEXT NOT NULL,
+    pincode TEXT NOT NULL,
+    total_amount DECIMAL(10, 2) NOT NULL,
+    payment_status TEXT DEFAULT 'pending' NOT NULL CHECK (payment_status IN ('pending', 'paid', 'failed')),
+    razorpay_order_id TEXT,
+    razorpay_payment_id TEXT,
+    shiprocket_order_id TEXT,
+    shiprocket_shipment_id TEXT,
+    shiprocket_awb_code TEXT,
+    shiprocket_courier_name TEXT,
+    shiprocket_tracking_url TEXT,
+    shipping_status TEXT DEFAULT 'pending' NOT NULL CHECK (shipping_status IN ('pending', 'shipped', 'delivered', 'returned')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_phone ON public.orders(customer_phone);
+CREATE INDEX IF NOT EXISTS idx_orders_payment_id ON public.orders(razorpay_payment_id);
+
+CREATE TABLE IF NOT EXISTS public.order_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    order_id UUID REFERENCES public.orders(id) ON DELETE CASCADE NOT NULL,
+    product_id UUID REFERENCES public.products(id) ON DELETE SET NULL,
+    quantity INTEGER DEFAULT 1 NOT NULL,
+    price DECIMAL(10, 2) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_order_items_order ON public.order_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_order_items_product ON public.order_items(product_id);
 
 -- 7. Users Table (Firebase Phone Auth integrated)
 CREATE TABLE IF NOT EXISTS public.users (
