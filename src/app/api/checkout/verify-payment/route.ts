@@ -44,24 +44,30 @@ export async function POST(request: Request) {
     let totalAmount = 0;
     const orderItemsToInsert: any[] = [];
     const emailItems: any[] = [];
+    const resolvedProductUuids: Record<string, string> = {};
 
     for (const item of items) {
-      const { data: product, error } = await supabaseServer
-        .from("products")
-        .select("name, price")
-        .eq("id", item.id)
-        .single();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id);
+      const query = supabaseServer.from("products").select("id, name, price");
+      if (isUuid) {
+        query.eq("id", item.id);
+      } else {
+        query.eq("slug", item.id);
+      }
+
+      const { data: product, error } = await query.single();
 
       if (error || !product) {
         return NextResponse.json({ error: `Product not found: ${item.id}` }, { status: 400 });
       }
 
+      resolvedProductUuids[item.id] = product.id;
       const qty = item.quantity || 1;
       const itemPrice = Number(product.price);
       totalAmount += itemPrice * qty;
 
       orderItemsToInsert.push({
-        product_id: item.id,
+        product_id: product.id,
         quantity: qty,
         price: itemPrice,
       });
@@ -181,19 +187,20 @@ export async function POST(request: Request) {
 
     // 5. Deduct product inventory stock (with self-healing fallback)
     for (const item of items) {
+      const resolvedId = resolvedProductUuids[item.id] || item.id;
       const qty = item.quantity || 1;
       let currentStock: number | null = null;
       try {
         const { data: stockData } = await supabaseServer
           .from("products")
           .select("stock")
-          .eq("id", item.id)
+          .eq("id", resolvedId)
           .single();
         if (stockData && stockData.stock !== undefined && stockData.stock !== null) {
           currentStock = Number(stockData.stock);
         }
       } catch (err) {
-        console.warn("Could not retrieve stock info for product:", item.id);
+        console.warn("Could not retrieve stock info for product:", resolvedId);
       }
 
       if (currentStock !== null) {
@@ -202,12 +209,12 @@ export async function POST(request: Request) {
           const { error: updateStockErr } = await supabaseServer
             .from("products")
             .update({ stock: newStock })
-            .eq("id", item.id);
+            .eq("id", resolvedId);
           if (updateStockErr) {
-            console.error(`Failed to deduct inventory for ${item.id}:`, updateStockErr.message);
+            console.error(`Failed to deduct inventory for ${resolvedId}:`, updateStockErr.message);
           }
         } catch (err: any) {
-          console.error(`Exception while deducting inventory for ${item.id}:`, err.message);
+          console.error(`Exception while deducting inventory for ${resolvedId}:`, err.message);
         }
       }
     }

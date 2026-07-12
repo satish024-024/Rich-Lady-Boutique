@@ -23,12 +23,15 @@ export async function POST(request: Request) {
       let product: any = null;
       let dbError: any = null;
 
-      const firstQuery = await supabaseServer
-        .from("products")
-        .select("price, stock")
-        .eq("id", item.id)
-        .single();
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(item.id);
+      const query = supabaseServer.from("products").select("price, stock");
+      if (isUuid) {
+        query.eq("id", item.id);
+      } else {
+        query.eq("slug", item.id);
+      }
 
+      const firstQuery = await query.single();
       product = firstQuery.data;
       dbError = firstQuery.error;
 
@@ -40,13 +43,15 @@ export async function POST(request: Request) {
           dbError.message?.includes("column \"stock\" of relation \"products\" does not exist");
 
         if (isMissingStockCol) {
-          const retryQuery = await supabaseServer
-            .from("products")
-            .select("price")
-            .eq("id", item.id)
-            .single();
-          product = retryQuery.data;
-          dbError = retryQuery.error;
+          const retryQuery = supabaseServer.from("products").select("price");
+          if (isUuid) {
+            retryQuery.eq("id", item.id);
+          } else {
+            retryQuery.eq("slug", item.id);
+          }
+          const retryResult = await retryQuery.single();
+          product = retryResult.data;
+          dbError = retryResult.error;
         }
       }
 

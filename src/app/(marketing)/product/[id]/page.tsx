@@ -35,7 +35,7 @@ export default function ProductDetailPage({
   useEffect(() => {
     setQuantity(1);
     getProducts().then((products) => {
-      const found = products.find((p) => p.id === productId);
+      const found = products.find((p) => p.id === productId || p.slug === productId);
 
       if (found) {
         setProduct(found);
