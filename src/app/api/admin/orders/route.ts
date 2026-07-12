@@ -13,8 +13,9 @@ export async function GET() {
           price,
           product_id,
           products (
+            id,
             name,
-            image_url
+            side_profile1_url
           )
         )
       `)
@@ -24,7 +25,20 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, orders });
+    const mappedOrders = (orders || []).map((ord: any) => ({
+      ...ord,
+      total: Number(ord.total_amount),
+      status: ord.shipping_status,
+      order_items: (ord.order_items || []).map((item: any) => ({
+        ...item,
+        products: item.products ? {
+          name: item.products.name,
+          image_url: item.products.side_profile1_url || "/images/prod_fallback.jpg",
+        } : null,
+      })),
+    }));
+
+    return NextResponse.json({ success: true, orders: mappedOrders });
   } catch (error: any) {
     console.error("Error fetching admin orders:", error);
     return NextResponse.json({ error: error.message || "Failed to fetch orders" }, { status: 500 });

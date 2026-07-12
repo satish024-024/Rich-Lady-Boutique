@@ -24,9 +24,9 @@ export async function GET(request: Request) {
           quantity,
           price,
           products (
+            id,
             name,
-            image_url,
-            category
+            side_profile1_url
           )
         )
       `)
@@ -37,7 +37,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, orders: data || [] });
+    const mappedOrders = (data || []).map((ord: any) => ({
+      ...ord,
+      order_items: (ord.order_items || []).map((item: any) => ({
+        ...item,
+        products: item.products ? {
+          name: item.products.name,
+          image_url: item.products.side_profile1_url || "/images/prod_fallback.jpg",
+          category: "Artisan Craft", // Fallback category string
+        } : null,
+      })),
+    }));
+
+    return NextResponse.json({ success: true, orders: mappedOrders });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
